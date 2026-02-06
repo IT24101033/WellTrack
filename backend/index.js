@@ -2,7 +2,7 @@ import express from "express"
 import mongoose from "mongoose"
 
 
-const app=express();
+const app = express();
 
 // const mongodbURL = "mongodb+srv://admin:admin@123@aiml.9i0tvu5.mongodb.net/?appName=aiml"
 // mongoose.connect(mongodbURL).then(()=>{
@@ -18,6 +18,9 @@ app.use(express.json());
 
 
 
-app.listen(()=>{
-    ()=>{console.log("server is running")}
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 })

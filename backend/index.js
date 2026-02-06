@@ -2,6 +2,7 @@ import express from "express"
 import mongoose from "mongoose"
 import dotenv from "dotenv"
 import userRouter from "./src/routes/userRoutes.js"
+import jwt from "jsonwebtoken"
 dotenv.config();
 
 
@@ -16,6 +17,10 @@ mongoose.connect(mongodbURL).then(()=>{
 
 
 app.use(express.json());
+
+app.use((req,res,next)=>{
+    
+})
 
 
 

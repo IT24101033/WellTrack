@@ -1,13 +1,16 @@
 import express from "express"
 import mongoose from "mongoose"
+import dotenv from "dotenv"
+dotenv.config();
+
 
 
 const app = express();
 
-// const mongodbURL = "mongodb+srv://admin:admin@123@aiml.9i0tvu5.mongodb.net/?appName=aiml"
-// mongoose.connect(mongodbURL).then(()=>{
-//     console.log("DB connect")
-// })
+const mongodbURL = process.env.MONGO_URL
+mongoose.connect(mongodbURL).then(()=>{
+    console.log("DB connect")
+})
 
 
 
@@ -19,8 +22,8 @@ app.use(express.json());
 
 
 
-const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+
+app.listen(3000, () => {
+    console.log("Server is running");
 })

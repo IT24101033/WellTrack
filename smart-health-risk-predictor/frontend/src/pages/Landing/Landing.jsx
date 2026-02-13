@@ -41,21 +41,21 @@ export default function Landing() {
                 <AnalyticsPreview />
 
                 {/* CTA Section */}
-                <section className="py-20 bg-primary-900 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 -z-10 w-[600px] h-[600px] bg-primary-800/50 rounded-full blur-3xl opacity-60 translate-x-1/2 -translate-y-1/2"></div>
+                <section className="py-20 bg-blue-950 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -z-10 w-[600px] h-[600px] bg-blue-900/50 rounded-full blur-3xl opacity-60 translate-x-1/2 -translate-y-1/2"></div>
                     <div className="container mx-auto px-4 md:px-8 text-center relative z-10">
                         <h2 className="text-3xl font-bold sm:text-4xl mb-6">Take Control of Your Health Today.</h2>
-                        <p className="text-primary-100 text-lg mb-10 max-w-2xl mx-auto">
+                        <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">
                             Join thousands of students who are improving their well-being with AI-powered insights.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link to="/register">
-                                <Button size="lg" className="bg-success hover:bg-success-600 text-white border-0 h-12 px-8 rounded-full">
+                                <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 h-12 px-10 rounded-full font-semibold text-base shadow-lg shadow-emerald-500/20 transition-transform hover:scale-105">
                                     Create Free Account
                                 </Button>
                             </Link>
                             <Link to="/login">
-                                <Button variant="outline" size="lg" className="bg-transparent text-white border-white hover:bg-white/10 h-12 px-8 rounded-full">
+                                <Button variant="outline" size="lg" className="bg-white/10 text-white border-white/20 hover:bg-white/20 backdrop-blur-sm h-12 px-10 rounded-full font-semibold text-base transition-transform hover:scale-105">
                                     Login to Dashboard
                                 </Button>
                             </Link>

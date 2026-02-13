@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
+import Landing from './pages/Landing/Landing';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
@@ -13,11 +14,13 @@ import Schedule from './pages/Schedule/Schedule';
 function App() {
     return (
         <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
+            {/* Protected Dashboard Routes */}
             <Route path="/" element={<Layout />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="health-input" element={<HealthInput />} />
                 <Route path="prediction" element={<Prediction />} />
@@ -26,6 +29,9 @@ function App() {
                 <Route path="tips" element={<Tips />} />
                 <Route path="schedule" element={<Schedule />} />
             </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 }

@@ -13,7 +13,9 @@ const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
+const path = require('path');
 const reportRoutes = require('./routes/reportRoutes');
+const userRoutes = require('./routes/userRoutes');
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
 
@@ -61,7 +63,11 @@ app.get('/health', (_req, res) =>
     res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() })
 );
 
+// ── Static: Profile image uploads ────────────────────────────────────────────
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // ── API Routes ────────────────────────────────────────────────────────────────
+app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
 

@@ -10,6 +10,9 @@ import Reports from './pages/Reports/Reports';
 import Notifications from './pages/Notifications/Notifications';
 import Tips from './pages/Tips/Tips';
 import Schedule from './pages/Schedule/Schedule';
+import Profile from './pages/Profile/Profile';
+import AdminUsers from './pages/Admin/AdminUsers';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
     return (
@@ -20,7 +23,11 @@ function App() {
             <Route path="/register" element={<Register />} />
 
             {/* Protected Dashboard Routes */}
-            <Route path="/" element={<Layout />}>
+            <Route path="/" element={
+                <ProtectedRoute>
+                    <Layout />
+                </ProtectedRoute>
+            }>
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="health-input" element={<HealthInput />} />
                 <Route path="prediction" element={<Prediction />} />
@@ -28,6 +35,14 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="tips" element={<Tips />} />
                 <Route path="schedule" element={<Schedule />} />
+                <Route path="profile" element={<Profile />} />
+
+                {/* Admin Only */}
+                <Route path="admin/users" element={
+                    <ProtectedRoute adminOnly>
+                        <AdminUsers />
+                    </ProtectedRoute>
+                } />
             </Route>
 
             {/* Fallback */}

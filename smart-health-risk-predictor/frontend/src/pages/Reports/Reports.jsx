@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Download, PlusCircle, Sparkles, TrendingUp, FileText, BarChart3, Moon, Activity } from 'lucide-react';
+import { Download, PlusCircle, Sparkles, TrendingUp, FileText, BarChart3, Moon, Activity, Heart } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import HealthPDFImportCard from '../../components/HealthPDFImportCard/HealthPDFImportCard';
 
 const GlassTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
@@ -48,14 +49,79 @@ const SummaryCard = ({ icon: Icon, label, value, sub, color }) => (
     </div>
 );
 
+// ─── Heart Rate Chart (populated after PDF import) ─────────────────────────
+function HeartRateChart({ hrData }) {
+    if (!hrData || hrData.length === 0) return null;
+    return (
+        <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+                <Heart className="w-4 h-4" style={{ color: '#ef4444' }} />
+                <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+                    Imported Heart Rate Trend
+                </h2>
+                <span
+                    className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}
+                >
+                    {hrData.length} records
+                </span>
+            </div>
+            <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={hrData} margin={{ left: -20, right: 8 }}>
+                        <defs>
+                            <linearGradient id="hrMinGr" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="hrMaxGr" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
+                        <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<GlassTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Line type="monotone" dataKey="hr_min" name="HR Min (bpm)" stroke="#10b981" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="hr_max" name="HR Max (bpm)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────
 export default function Reports() {
     const [showModal, setShowModal] = useState(false);
+    const [importedHRData, setImportedHRData] = useState([]);
+    const [importSummary, setImportSummary] = useState(null);
+
+    // Called by HealthPDFImportCard after a successful import
+    const handleImportSuccess = (apiResponse) => {
+        if (apiResponse?.summary) {
+            setImportSummary(apiResponse.summary);
+        }
+        // We don't have per-record data from the summary endpoint,
+        // so we build a representative chart point from the aggregate
+        if (apiResponse?.summary) {
+            const s = apiResponse.summary;
+            const newPoint = {
+                label: s.date_range?.split(' → ')[0] || 'Imported',
+                hr_min: s.min_hr,
+                hr_max: s.max_hr,
+            };
+            setImportedHRData(prev => [...prev, newPoint]);
+        }
+    };
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Reports & Analytics</h1>
+                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Reports &amp; Analytics</h1>
                     <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>Your health trends at a glance</p>
                 </div>
                 <button onClick={() => setShowModal(true)} className="glass-btn flex items-center gap-2 px-4 py-2.5 text-sm">
@@ -79,11 +145,20 @@ export default function Reports() {
                 </div>
             </div>
 
+            {/* ── PDF Import Card ──────────────────────────────────────── */}
+            <HealthPDFImportCard onSuccess={handleImportSuccess} />
+
+            {/* ── Imported HR Chart (shows after successful import) ─────── */}
+            {importedHRData.length > 0 && (
+                <HeartRateChart hrData={importedHRData} />
+            )}
+
             {/* Summary cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryCard icon={Moon} label="Avg Sleep" value="7.2h" sub="▲ +30m vs last wk" color="#6366f1" />
                 <SummaryCard icon={Activity} label="Avg Steps" value="8,790" sub="▼ -8% vs last wk" color="#f97316" />
-                <SummaryCard icon={TrendingUp} label="Avg Risk" value="35%" sub="▼ Improving" color="#10b981" />
+                <SummaryCard icon={TrendingUp} label="Avg Risk" value={importSummary ? `${(importSummary.avg_hr || 0).toFixed(0)} bpm` : '35%'}
+                    sub={importSummary ? '❤️ from PDF import' : '▼ Improving'} color="#10b981" />
                 <SummaryCard icon={BarChart3} label="Reports Total" value="3" sub="This month" color="#3b82f6" />
             </div>
 
@@ -119,7 +194,7 @@ export default function Reports() {
 
                 {/* Step / stress bars */}
                 <div className="glass-card p-5">
-                    <h2 className="font-bold text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Daily Steps & Stress</h2>
+                    <h2 className="font-bold text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Daily Steps &amp; Stress</h2>
                     <div className="h-52">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={weekData} margin={{ left: -20, right: 8 }}>

@@ -9,11 +9,15 @@ require('dotenv').config();
 
 const { connect } = require('./config/db');
 const app = require('./app');
+const { startReminderScheduler } = require('./utils/reminderScheduler');
 const port = parseInt(process.env.PORT || '5000', 10);
 
 (async () => {
     // Connect to MongoDB before accepting HTTP traffic
     await connect();
+
+    // Start background reminder scheduler
+    startReminderScheduler();
 
     const server = app.listen(port, () => {
         console.log(`🚀  Server running on http://localhost:${port}  [${process.env.NODE_ENV || 'development'}]`);

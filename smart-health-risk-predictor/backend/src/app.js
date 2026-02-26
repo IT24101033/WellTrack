@@ -18,6 +18,8 @@ const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const userSettingsRoutes = require('./routes/userSettingsRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const reminderRoutes = require('./routes/reminderRoutes');
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
 
@@ -37,7 +39,7 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
         cb(new Error(`CORS: origin "${origin}" not allowed.`));
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 }));
@@ -72,6 +74,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/reminders', reminderRoutes);
 app.use('/api', userSettingsRoutes);   // /api/subscription + /api/preferences
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
 

@@ -19,6 +19,7 @@
         "mongoose": "^8.2.4",
         "morgan": "^1.10.0",
         "multer": "^2.0.2",
+        "node-cron": "^4.2.1",
         "pdf-parse": "^2.4.5",
         "pdfjs-dist": "^3.11.174"
     },

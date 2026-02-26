@@ -20,6 +20,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const userSettingsRoutes = require('./routes/userSettingsRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
+const wellnessRoutes = require('./routes/wellnessRoutes');
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
 
@@ -78,6 +79,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api', userSettingsRoutes);   // /api/subscription + /api/preferences
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
+app.use('/api/wellness', wellnessRoutes); // Food & Lifestyle Tips Management
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) =>

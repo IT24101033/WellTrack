@@ -20,6 +20,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const userSettingsRoutes = require('./routes/userSettingsRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
 
@@ -76,6 +77,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/health', healthRoutes);
 app.use('/api', userSettingsRoutes);   // /api/subscription + /api/preferences
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
 

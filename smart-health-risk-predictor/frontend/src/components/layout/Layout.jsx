@@ -3,12 +3,28 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Bell, Search, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useState, useEffect } from 'react';
+import { fetchNotifications } from '../../services/notificationService';
 
 export function Layout() {
     const { user } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const initials = user?.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+
+    // Live unread notification count for the bell badge
+    const [unreadCount, setUnreadCount] = useState(0);
+    useEffect(() => {
+        const fetchUnread = async () => {
+            try {
+                const res = await fetchNotifications({ status: 'unread' });
+                if (res.data?.success) setUnreadCount(res.data.unreadCount ?? 0);
+            } catch { /* silent — don't break layout on error */ }
+        };
+        fetchUnread();
+        const interval = setInterval(fetchUnread, 60000); // poll every 60s
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="flex min-h-screen relative overflow-hidden">
@@ -88,7 +104,12 @@ export function Layout() {
                                 <button className="relative p-2 rounded-2xl transition-all duration-200 hover:scale-105"
                                     style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                                     <Bell className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-                                    <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border border-white dark:border-slate-800 animate-pulse" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border border-white dark:border-slate-800 flex items-center justify-center animate-pulse"
+                                            style={{ fontSize: '9px', fontWeight: 700, color: 'white', lineHeight: 1 }}>
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
                                 </button>
                             </Link>
 

@@ -5,8 +5,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
+import {
+    fetchNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    deleteNotification as deleteNotifApi,
+    clearAllNotifications as clearAllNotifApi,
+} from '../../services/notificationService';
 
 /* ─── constants ─────────────────────────────────────────────── */
 const TYPE_ICON = { appointment: Calendar, medication: Pill, wellness: Heart, system: Bell };
@@ -338,7 +343,6 @@ function PrefRow({ label, field, prefs, setPrefs, t }) {
 /* ─────────────────────────────────────────────────────────── */
 export default function Notifications() {
     const { token } = useAuth();
-
     const { isDark: dark, toggleTheme } = useTheme();
     const [notifEnabled, setNotifEnabled] = useState(true);
     const [filter, setFilter] = useState('all');
@@ -357,8 +361,6 @@ export default function Notifications() {
     /* payment gateway */
     const [payPlan, setPayPlan] = useState(null); // null = closed, 'Premium'/'Pro' = open
 
-    const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
-
     /* ── theme ── */
     const t = dark ? {
         bg: '#0F172A', card: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.10)',
@@ -373,30 +375,36 @@ export default function Notifications() {
     const loadNotifs = useCallback(async () => {
         setLoading(true);
         try {
-            const q = new URLSearchParams();
-            if (['read', 'unread'].includes(filter)) q.set('status', filter);
-            if (['appointment', 'medication', 'wellness', 'system'].includes(filter)) q.set('type', filter);
-            const r = await fetch(API + '/notifications?' + q.toString(), { headers: hdrs });
-            const d = await r.json();
-            if (d.success) { setNotifs(d.notifications); setUnreadCount(d.unreadCount); }
-        } catch (_e) {/* silent */ }
+            const params = {};
+            if (['read', 'unread'].includes(filter)) params.status = filter;
+            if (['appointment', 'medication', 'wellness', 'system'].includes(filter)) params.type = filter;
+            const res = await fetchNotifications(params);
+            if (res.data.success) {
+                setNotifs(res.data.notifications);
+                setUnreadCount(res.data.unreadCount);
+            }
+        } catch (_e) { /* silent */ }
         setLoading(false);
-    }, [filter, token]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadSub = useCallback(async () => {
         try {
-            const r = await fetch(API + '/subscription', { headers: hdrs });
+            const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/subscription', {
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            });
             const d = await r.json();
             if (d.success) setSubscription(d.subscription);
-        } catch (_e) {/* silent */ }
+        } catch (_e) { /* silent */ }
     }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadPrefs = useCallback(async () => {
         try {
-            const r = await fetch(API + '/preferences', { headers: hdrs });
+            const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/preferences', {
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            });
             const d = await r.json();
             if (d.success) { setPrefs(d.preferences); setPrefsTmp(d.preferences); }
-        } catch (_e) {/* silent */ }
+        } catch (_e) { /* silent */ }
     }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { loadNotifs(); }, [loadNotifs]);
@@ -404,29 +412,50 @@ export default function Notifications() {
     useEffect(() => { loadPrefs(); }, [loadPrefs]);
 
     /* ── actions ── */
-    const markRead = async (id) => { await fetch(API + '/notifications/' + id, { method: 'PUT', headers: hdrs }); setNotifs(prev => prev.map(n => n._id === id ? { ...n, status: 'read' } : n)); setUnreadCount(c => Math.max(0, c - 1)); };
-    const deleteOne = async (id) => { await fetch(API + '/notifications/' + id, { method: 'DELETE', headers: hdrs }); setNotifs(prev => prev.filter(n => n._id !== id)); };
-    const markAllRead = async () => { await fetch(API + '/notifications/read-all', { method: 'PUT', headers: hdrs }); setNotifs(prev => prev.map(n => ({ ...n, status: 'read' }))); setUnreadCount(0); };
-    const clearAll = async () => { await fetch(API + '/notifications/all', { method: 'DELETE', headers: hdrs }); setNotifs([]); setUnreadCount(0); };
+    const markRead = async (id) => {
+        await markNotificationRead(id);
+        setNotifs(prev => prev.map(n => n._id === id ? { ...n, status: 'read' } : n));
+        setUnreadCount(c => Math.max(0, c - 1));
+    };
+    const deleteOne = async (id) => {
+        await deleteNotifApi(id);
+        setNotifs(prev => prev.filter(n => n._id !== id));
+    };
+    const markAllRead = async () => {
+        await markAllNotificationsRead();
+        setNotifs(prev => prev.map(n => ({ ...n, status: 'read' })));
+        setUnreadCount(0);
+    };
+    const clearAll = async () => {
+        await clearAllNotifApi();
+        setNotifs([]);
+        setUnreadCount(0);
+    };
 
     const cancelPlan = async () => {
-        const r = await fetch(API + '/subscription', { method: 'DELETE', headers: hdrs });
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+        const r = await fetch(BASE + '/subscription', { method: 'DELETE', headers: hdrs });
         const d = await r.json();
         if (d.success) setSubscription(d.subscription);
     };
 
     /* called after payment success */
     const upgradePlan = async (planName) => {
-        const r = await fetch(API + '/subscription', { method: 'PUT', headers: hdrs, body: JSON.stringify({ planName }) });
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+        const r = await fetch(BASE + '/subscription', { method: 'PUT', headers: hdrs, body: JSON.stringify({ planName }) });
         const d = await r.json();
         if (d.success) setSubscription(d.subscription);
     };
 
     const savePrefs = async () => {
         setPrefSaving(true);
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
         const body = { ...prefsTmp };
         delete body._id; delete body.userId; delete body.__v;
-        const r = await fetch(API + '/preferences', { method: 'PUT', headers: hdrs, body: JSON.stringify(body) });
+        const r = await fetch(BASE + '/preferences', { method: 'PUT', headers: hdrs, body: JSON.stringify(body) });
         const d = await r.json();
         if (d.success) { setPrefs(d.preferences); setPrefMsg('Preferences saved!'); }
         else setPrefMsg('Failed to save.');

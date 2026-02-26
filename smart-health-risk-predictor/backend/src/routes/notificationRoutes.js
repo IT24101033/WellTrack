@@ -18,9 +18,9 @@ router.use(authenticate);
 
 router.post('/', authorizeAdmin, createNotification);   // admin only
 router.get('/', getNotifications);
-router.put('/read-all', markAllAsRead);
+router.put('/read-all', markAllAsRead);      // ⚠️ must be before /:id
+router.delete('/all', clearAllNotifications); // ⚠️ must be before /:id
 router.put('/:id', markAsRead);
-router.delete('/all', clearAllNotifications);
 router.delete('/:id', deleteNotification);
 
 module.exports = router;

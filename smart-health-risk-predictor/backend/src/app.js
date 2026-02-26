@@ -16,6 +16,8 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const userSettingsRoutes = require('./routes/userSettingsRoutes');
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
 
@@ -69,6 +71,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api', userSettingsRoutes);   // /api/subscription + /api/preferences
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import tipService from '../../services/tipService';
-import { Pencil, Trash2, PlusCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, PlusCircle, AlertCircle, RefreshCw, Download, Loader2 } from 'lucide-react';
 
 export default function AdminTipsManagement() {
     const [tips, setTips] = useState([]);
@@ -9,6 +9,10 @@ export default function AdminTipsManagement() {
     const [success, setSuccess] = useState('');
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('ALL');
+
+    const [importingDiet, setImportingDiet] = useState(false);
+    const [importingWorkout, setImportingWorkout] = useState(false);
+    const [importingMental, setImportingMental] = useState(false);
 
     // Form State
     const [showModal, setShowModal] = useState(false);
@@ -32,17 +36,54 @@ export default function AdminTipsManagement() {
         setLoading(true);
         setError('');
         try {
-            // In a real app we'd fetch all (including inactive) for admin, 
-            // but the backend getAllTips only fetches active currently, 
-            // let's assume it fetches all or make a separate admin endpoint if needed.
-            // Modifying controller to fetch all for admin might be necessary.
-            // For now, we use what we have in tipService.getAllTips.
             const res = await tipService.getAllTips();
             setTips(res.data);
         } catch (err) {
             setError('Failed to fetch tips.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleImportDiet = async () => {
+        setImportingDiet(true); setError(''); setSuccess('');
+        try {
+            const res = await tipService.importDietTips();
+            setSuccess(res.message);
+            fetchTips();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to import diet tips');
+        } finally {
+            setImportingDiet(false);
+            setTimeout(() => setSuccess(''), 4000);
+        }
+    };
+
+    const handleImportWorkout = async () => {
+        setImportingWorkout(true); setError(''); setSuccess('');
+        try {
+            const res = await tipService.importWorkoutTips();
+            setSuccess(res.message);
+            fetchTips();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to import workout tips');
+        } finally {
+            setImportingWorkout(false);
+            setTimeout(() => setSuccess(''), 4000);
+        }
+    };
+
+    const handleImportMental = async () => {
+        setImportingMental(true); setError(''); setSuccess('');
+        try {
+            const res = await tipService.importMentalTips();
+            setSuccess(res.message);
+            fetchTips();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to import mental tips');
+        } finally {
+            setImportingMental(false);
+            setTimeout(() => setSuccess(''), 4000);
         }
     };
 
@@ -128,17 +169,37 @@ export default function AdminTipsManagement() {
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Admin Tips Management</h1>
                     <p className="text-sm text-gray-500">Manage all food & lifestyle tips</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm"
-                >
-                    <PlusCircle size={18} /> Add New Tip
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleImportDiet} disabled={importingDiet}
+                        className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg hover:bg-emerald-200 transition-colors shadow-sm disabled:opacity-70"
+                    >
+                        {importingDiet ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Import Diet
+                    </button>
+                    <button
+                        onClick={handleImportWorkout} disabled={importingWorkout}
+                        className="flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-lg hover:bg-orange-200 transition-colors shadow-sm disabled:opacity-70"
+                    >
+                        {importingWorkout ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Import Workout
+                    </button>
+                    <button
+                        onClick={handleImportMental} disabled={importingMental}
+                        className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors shadow-sm disabled:opacity-70"
+                    >
+                        {importingMental ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Import Mental
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors"
+                    >
+                        <PlusCircle size={18} /> Add New Tip
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -186,6 +247,7 @@ export default function AdminTipsManagement() {
                             <th className="p-4 font-semibold text-gray-600 text-sm">Target Type</th>
                             <th className="p-4 font-semibold text-gray-600 text-sm">Difficulty</th>
                             <th className="p-4 font-semibold text-gray-600 text-sm">Time</th>
+                            <th className="p-4 font-semibold text-gray-600 text-sm">Source</th>
                             <th className="p-4 font-semibold text-gray-600 text-sm text-center">Status</th>
                             <th className="p-4 font-semibold text-gray-600 text-sm text-right">Actions</th>
                         </tr>
@@ -210,6 +272,12 @@ export default function AdminTipsManagement() {
                                     <td className="p-4 text-sm text-gray-600">{tip.target_type}</td>
                                     <td className="p-4 text-sm text-gray-600">{tip.difficulty_level}</td>
                                     <td className="p-4 text-sm text-gray-600">{tip.recommended_time || '-'}</td>
+                                    <td className="p-4">
+                                        {tip.source === 'EXTERNAL' ?
+                                            <span className="text-[10px] px-2 py-0.5 rounded border border-purple-200 text-purple-600 bg-purple-50 tracking-wider font-bold">API</span> :
+                                            <span className="text-[10px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 bg-white tracking-wider font-bold">ADMIN</span>
+                                        }
+                                    </td>
                                     <td className="p-4 text-center">
                                         {tip.is_active ?
                                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Active</span> :

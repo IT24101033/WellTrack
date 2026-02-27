@@ -38,6 +38,22 @@ const tipService = {
     getPersonalizedTips: async (studentId) => {
         const response = await api.get(`${API_URL}/student/${studentId}`);
         return response.data;
+    },
+
+    // External Imports (Admin Only)
+    importDietTips: async () => {
+        const response = await api.post(`${API_URL}/import/diet`);
+        return response.data;
+    },
+
+    importWorkoutTips: async () => {
+        const response = await api.post(`${API_URL}/import/workout`);
+        return response.data;
+    },
+
+    importMentalTips: async () => {
+        const response = await api.post(`${API_URL}/import/mental`);
+        return response.data;
     }
 };
 

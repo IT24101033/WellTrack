@@ -94,4 +94,8 @@ app.use((err, _req, res, _next) => {
     });
 });
 
+// Initialize Cron Jobs
+const { initCronJobs } = require('./utils/cronJobs');
+initCronJobs();
+
 module.exports = app;

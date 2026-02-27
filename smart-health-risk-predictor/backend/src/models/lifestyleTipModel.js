@@ -34,7 +34,20 @@ const lifestyleTipSchema = new mongoose.Schema(
         created_by: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: true
+            required: false // Nullable for external imports
+        },
+        source: {
+            type: String,
+            enum: ['ADMIN', 'EXTERNAL'],
+            default: 'ADMIN'
+        },
+        external_id: {
+            type: String,
+            default: null
+        },
+        image_url: {
+            type: String,
+            default: null
         },
         is_active: {
             type: Boolean,

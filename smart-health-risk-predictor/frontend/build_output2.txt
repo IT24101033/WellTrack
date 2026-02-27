@@ -1,0 +1,141 @@
+﻿
+> smart-health-risk-predictor@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 2756 modules transformed.
+node.exe : [31mx[39m 
+Build failed in 3.11s
+At C:\Program Files\nod
+ejs\npm.ps1:29 char:3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: ([31mx[39m B   
+ uild failed in 3.1    
+1s:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+[31merror during 
+build:
+[31msrc/pages/Admin/Ad
+minTipsManagement.jsx 
+(3:61): 
+"CloudDownload" is not 
+exported by "node_modul
+es/lucide-react/dist/es
+m/lucide-react.js", 
+imported by "src/pages/
+Admin/AdminTipsManageme
+nt.jsx".[31m
+file: [36mC:/SLIIT/Y2S
+2/AIML Project/Git/smar
+t-health-risk-predictor
+/frontend/src/pages/Adm
+in/AdminTipsManagement.
+jsx:3:61[31m
+[33m
+1: import React, { 
+useState, useEffect } 
+from 'react';
+2: import tipService 
+from '../../services/ti
+pService';
+3: import { Pencil, 
+Trash2, PlusCircle, 
+AlertCircle, 
+RefreshCw, 
+CloudDownload, Loader2 
+} from 'lucide-react';
+                       
+                       
+                  ^
+4: 
+5: export default 
+function 
+AdminTipsManagement() {
+[31m
+    at getRollupError (
+file:///C:/SLIIT/Y2S2/A
+IML%20Project/Git/smart
+-health-risk-predictor/
+frontend/node_modules/r
+ollup/dist/es/shared/pa
+rseAst.js:402:41)
+    at error (file:///C
+:/SLIIT/Y2S2/AIML%20Pro
+ject/Git/smart-health-r
+isk-predictor/frontend/
+node_modules/rollup/dis
+t/es/shared/parseAst.js
+:398:42)
+    at Module.error (fi
+le:///C:/SLIIT/Y2S2/AIM
+L%20Project/Git/smart-h
+ealth-risk-predictor/fr
+ontend/node_modules/rol
+lup/dist/es/shared/node
+-entry.js:17040:16)
+    at 
+Module.traceVariable (f
+ile:///C:/SLIIT/Y2S2/AI
+ML%20Project/Git/smart-
+health-risk-predictor/f
+rontend/node_modules/ro
+llup/dist/es/shared/nod
+e-entry.js:17452:29)
+    at ModuleScope.find
+Variable (file:///C:/SL
+IIT/Y2S2/AIML%20Project
+/Git/smart-health-risk-
+predictor/frontend/node
+_modules/rollup/dist/es
+/shared/node-entry.js:1
+5070:39)
+    at FunctionScope.fi
+ndVariable (file:///C:/
+SLIIT/Y2S2/AIML%20Proje
+ct/Git/smart-health-ris
+k-predictor/frontend/no
+de_modules/rollup/dist/
+es/shared/node-entry.js
+:5673:38)
+    at FunctionBodyScop
+e.findVariable (file://
+/C:/SLIIT/Y2S2/AIML%20P
+roject/Git/smart-health
+-risk-predictor/fronten
+d/node_modules/rollup/d
+ist/es/shared/node-entr
+y.js:5673:38)
+    at Identifier.bind 
+(file:///C:/SLIIT/Y2S2/
+AIML%20Project/Git/smar
+t-health-risk-predictor
+/frontend/node_modules/
+rollup/dist/es/shared/n
+ode-entry.js:5447:40)
+    at 
+CallExpression.bind (fi
+le:///C:/SLIIT/Y2S2/AIM
+L%20Project/Git/smart-h
+ealth-risk-predictor/fr
+ontend/node_modules/rol
+lup/dist/es/shared/node
+-entry.js:2825:28)
+    at 
+CallExpression.bind (fi
+le:///C:/SLIIT/Y2S2/AIM
+L%20Project/Git/smart-h
+ealth-risk-predictor/fr
+ontend/node_modules/rol
+lup/dist/es/shared/node
+-entry.js:12179:15)[39
+m

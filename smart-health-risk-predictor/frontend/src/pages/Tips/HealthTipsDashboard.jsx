@@ -147,23 +147,38 @@ function HealthTipsDashboardInner() {
                                 <div
                                     key={tip._id}
                                     onClick={() => setSelectedTip(tip)}
-                                    className="bg-white/70 backdrop-blur-md border border-white shadow-sm hover:shadow-md rounded-2xl p-5 cursor-pointer transition-all duration-300 transform hover:-translate-y-1 hover:bg-white/90"
+                                    className="bg-white/70 backdrop-blur-md border border-white shadow-sm hover:shadow-md rounded-2xl p-5 cursor-pointer transition-all duration-300 transform hover:-translate-y-1 hover:bg-white/90 flex flex-col h-full"
                                 >
-                                    <div className="flex justify-between items-start mb-3">
-                                        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold tracking-wide uppercase ${tip.category === 'DIET' ? 'bg-emerald-100/80 text-emerald-700' :
-                                            tip.category === 'WORKOUT' ? 'bg-orange-100/80 text-orange-700' :
-                                                'bg-purple-100/80 text-purple-700'
-                                            }`}>
-                                            {tip.category}
-                                        </span>
+                                    {tip.image_url && (
+                                        <div className="w-full h-32 mb-4 rounded-xl overflow-hidden shrink-0 shadow-sm border border-gray-100">
+                                            <img src={tip.image_url} alt={tip.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-start mb-3 gap-2 flex-wrap">
+                                        <div className="flex gap-2 items-center">
+                                            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold tracking-wide uppercase ${tip.category === 'DIET' ? 'bg-emerald-100/80 text-emerald-700' :
+                                                tip.category === 'WORKOUT' ? 'bg-orange-100/80 text-orange-700' :
+                                                    'bg-purple-100/80 text-purple-700'
+                                                }`}>
+                                                {tip.category}
+                                            </span>
+                                            {tip.source === 'EXTERNAL' && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full border border-indigo-200 text-indigo-600 bg-indigo-50 font-bold uppercase shadow-sm">
+                                                    Global
+                                                </span>
+                                            )}
+                                        </div>
                                         {tip.recommended_time && (
-                                            <span className="flex items-center gap-1 text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded-md">
+                                            <span className="flex items-center gap-1 text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
                                                 <Clock size={12} /> {tip.recommended_time}
                                             </span>
                                         )}
                                     </div>
-                                    <h3 className="font-bold text-gray-800 leading-snug mb-2">{tip.title}</h3>
-                                    <p className="text-gray-600 text-sm line-clamp-2">{tip.description}</p>
+
+                                    <h3 className="text-lg font-bold text-gray-800 mb-2 leading-tight">{tip.title}</h3>
+                                    <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed flex-1">
+                                        {tip.description}
+                                    </p>
                                 </div>
                             ))
                         )}
@@ -206,31 +221,64 @@ function HealthTipsDashboardInner() {
             {/* Modal */}
             {selectedTip && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm transition-opacity">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-transform scale-100">
-                        <div className={`p-6 border-b ${selectedTip.category === 'DIET' ? 'bg-emerald-50 border-emerald-100' :
-                            selectedTip.category === 'WORKOUT' ? 'bg-orange-50 border-orange-100' :
-                                'bg-purple-50 border-purple-100'
-                            }`}
-                        >
-                            <div className="flex justify-between items-start w-full">
-                                <span className={`text-xs px-3 py-1 bg-white rounded-full font-bold uppercase shadow-sm ${selectedTip.category === 'DIET' ? 'text-emerald-600' :
-                                    selectedTip.category === 'WORKOUT' ? 'text-orange-600' :
-                                        'text-purple-600'
-                                    }`}
-                                >
-                                    {selectedTip.category}
-                                </span>
-                                <button onClick={() => setSelectedTip(null)} className="text-gray-400 hover:text-gray-600 font-bold bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm">&times;</button>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-transform scale-100 flex flex-col max-h-[90vh]">
+                        {selectedTip.image_url && (
+                            <div className="w-full h-48 shrink-0 bg-gray-100 relative">
+                                <img src={selectedTip.image_url} alt={selectedTip.title} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                                <button onClick={() => setSelectedTip(null)} className="absolute top-4 right-4 text-white hover:text-gray-200 bg-black/30 rounded-full w-8 h-8 flex items-center justify-center shadow-sm backdrop-blur-sm">&times;</button>
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-900 mt-4 leading-tight">{selectedTip.title}</h2>
+                        )}
+                        <div className={`p-6 border-b shrink-0 ${!selectedTip.image_url ? (selectedTip.category === 'DIET' ? 'bg-emerald-50 border-emerald-100' :
+                            selectedTip.category === 'WORKOUT' ? 'bg-orange-50 border-orange-100' :
+                                'bg-purple-50 border-purple-100') : 'bg-white border-gray-100 pt-5'}
+                            `}
+                        >
+                            {!selectedTip.image_url && (
+                                <div className="flex justify-between items-start w-full">
+                                    <div className="flex gap-2 items-center">
+                                        <span className={`text-xs px-3 py-1 bg-white rounded-full font-bold uppercase shadow-sm ${selectedTip.category === 'DIET' ? 'text-emerald-600' :
+                                            selectedTip.category === 'WORKOUT' ? 'text-orange-600' :
+                                                'text-purple-600'
+                                            }`}
+                                        >
+                                            {selectedTip.category}
+                                        </span>
+                                        {selectedTip.source === 'EXTERNAL' && (
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full border border-indigo-200 text-indigo-600 bg-indigo-50 font-bold uppercase shadow-sm gap-1 flex items-center">
+                                                Imported
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button onClick={() => setSelectedTip(null)} className="text-gray-400 hover:text-gray-600 font-bold bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm">&times;</button>
+                                </div>
+                            )}
+                            {selectedTip.image_url && (
+                                <div className="flex gap-2 items-center mb-1">
+                                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase ${selectedTip.category === 'DIET' ? 'bg-emerald-100 text-emerald-700' :
+                                        selectedTip.category === 'WORKOUT' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-purple-100 text-purple-700'
+                                        }`}
+                                    >
+                                        {selectedTip.category}
+                                    </span>
+                                    {selectedTip.source === 'EXTERNAL' && (
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-indigo-200 text-indigo-600 bg-indigo-50 font-bold uppercase gap-1 flex items-center">
+                                            Imported Global Tip
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            <h2 className="text-2xl font-bold text-gray-900 mt-3 leading-tight tracking-tight">{selectedTip.title}</h2>
                             <div className="flex gap-2 mt-3">
-                                <span className="text-xs text-gray-500 font-medium bg-white/60 px-2.5 py-1 rounded-md">Difficulty: {selectedTip.difficulty_level}</span>
-                                <span className="text-xs text-gray-500 font-medium bg-white/60 px-2.5 py-1 rounded-md">Target: {selectedTip.target_type}</span>
+                                <span className="text-xs text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200">Difficulty: {selectedTip.difficulty_level}</span>
+                                <span className="text-xs text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200">Target: {selectedTip.target_type}</span>
                             </div>
                         </div>
 
-                        <div className="p-6">
-                            <p className="text-gray-700 leading-relaxed text-sm mb-6 whitespace-pre-line">
+                        <div className="p-6 overflow-y-auto no-scrollbar">
+                            <p className="text-gray-700 leading-relaxed text-sm mb-6 whitespace-pre-line bg-gray-50 p-4 rounded-xl border border-gray-100">
                                 {selectedTip.description}
                             </p>
 

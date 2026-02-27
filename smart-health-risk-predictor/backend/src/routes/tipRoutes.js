@@ -12,8 +12,15 @@ const {
     getTipsByCategory,
     getPersonalizedTips,
     updateTip,
-    deleteTip
+    deleteTip,
+    importDietTips,
+    importWorkoutTips,
+    importMentalTips
 } = require('../controllers/tipController');
+
+router.post('/import/diet', authenticate, authorizeRoles('admin'), importDietTips);
+router.post('/import/workout', authenticate, authorizeRoles('admin'), importWorkoutTips);
+router.post('/import/mental', authenticate, authorizeRoles('admin'), importMentalTips);
 
 router.post('/', authenticate, authorizeRoles('admin'), createTip);
 router.get('/', authenticate, getAllTips);

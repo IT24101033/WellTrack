@@ -1,10 +1,3 @@
-'use strict';
-
-/**
- * app.js
- * Express application factory — exported for clean separation from server.js.
- */
-
 require('dotenv').config();
 
 const express = require('express');
@@ -22,6 +15,7 @@ const activityRoutes = require('./routes/activityRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const wellnessRoutes = require('./routes/wellnessRoutes');
+const tipRoutes = require('./routes/tipRoutes'); // Added tip routes
 
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
@@ -83,6 +77,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api', userSettingsRoutes);   // /api/subscription + /api/preferences
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
 app.use('/api/wellness', wellnessRoutes); // Food & Lifestyle Tips Management
+app.use('/api/tips', tipRoutes); // Lifestyle Tips 
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) =>

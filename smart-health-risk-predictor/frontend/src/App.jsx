@@ -8,10 +8,11 @@ import HealthInput from './pages/HealthInput/HealthInput';
 import Prediction from './pages/Prediction/Prediction';
 import Reports from './pages/Reports/Reports';
 import Notifications from './pages/Notifications/Notifications';
-import Tips from './pages/Tips/Tips';
+import HealthTipsDashboard from './pages/Tips/HealthTipsDashboard';
 import Schedule from './pages/Schedule/Schedule';
 import Profile from './pages/Profile/Profile';
 import AdminUsers from './pages/Admin/AdminUsers';
+import AdminTipsManagement from './pages/Admin/AdminTipsManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -33,7 +34,7 @@ function App() {
                 <Route path="prediction" element={<Prediction />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="notifications" element={<Notifications />} />
-                <Route path="tips" element={<Tips />} />
+                <Route path="tips" element={<HealthTipsDashboard />} />
                 <Route path="schedule" element={<Schedule />} />
                 <Route path="profile" element={<Profile />} />
 
@@ -41,6 +42,11 @@ function App() {
                 <Route path="admin/users" element={
                     <ProtectedRoute adminOnly>
                         <AdminUsers />
+                    </ProtectedRoute>
+                } />
+                <Route path="admin/tips" element={
+                    <ProtectedRoute adminOnly>
+                        <AdminTipsManagement />
                     </ProtectedRoute>
                 } />
             </Route>

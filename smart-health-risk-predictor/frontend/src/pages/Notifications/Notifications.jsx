@@ -580,7 +580,7 @@ export default function Notifications() {
                                 ))}
                             </div>
                             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                <button onClick={() => setPayPlan('Pro')} style={{ padding: '9px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#3B82F6,#10B981)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <button onClick={() => setPayPlan(subscription.planName === 'Premium' ? 'Pro' : 'Premium')} style={{ padding: '9px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#3B82F6,#10B981)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CreditCard size={14} /> Upgrade Plan
                                 </button>
                                 <button onClick={cancelPlan} style={{ padding: '9px 20px', borderRadius: 12, border: '1px solid #EF4444', background: 'none', color: '#EF4444', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>

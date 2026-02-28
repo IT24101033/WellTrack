@@ -31,6 +31,11 @@ const reminderSchema = new mongoose.Schema(
             default: false,
             index: true,
         },
+        isAcknowledged: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
         activityTitle: {
             type: String,
             trim: true,

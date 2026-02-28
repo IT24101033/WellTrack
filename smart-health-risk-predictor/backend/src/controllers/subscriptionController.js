@@ -40,8 +40,8 @@ const updateSubscription = async (req, res) => {
         const updateData = {};
         if (planName) {
             updateData.planName = planName;
-            updateData.features = Subscription.PLAN_FEATURES
-                ? Subscription.PLAN_FEATURES[planName]
+            updateData.features = PLAN_FEATURES
+                ? PLAN_FEATURES[planName]
                 : [];
             updateData.status = 'active';
             updateData.startDate = new Date();

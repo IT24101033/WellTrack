@@ -42,7 +42,8 @@ const subscriptionSchema = new mongoose.Schema(
         features: {
             type: [String],
             default: function () {
-                return PLAN_FEATURES[this.planName] || PLAN_FEATURES.Free;
+                const plan = this ? this.planName : 'Free';
+                return PLAN_FEATURES[plan] || PLAN_FEATURES.Free;
             },
         },
         autoRenew: {

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Lock, AlertTriangle, Camera, Save, Eye, EyeOff, Loader2, CheckCircle2, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { changePassword } from '../../services/userService';
 
 const TABS = [
     { id: 'profile', label: 'Profile Info', icon: User },
@@ -50,6 +51,8 @@ export default function Profile() {
     const [tab, setTab] = useState('profile');
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [savedMessage, setSavedMessage] = useState('Profile updated successfully!');
+    const [passError, setPassError] = useState('');
     const [confirmDelete, setConfirmDelete] = useState('');
     const fileRef = useRef();
 
@@ -85,8 +88,29 @@ export default function Profile() {
         setSaving(true);
         await new Promise(r => setTimeout(r, 1200));
         updateUser?.({ ...user, ...form });
+        setSavedMessage('Profile updated successfully!');
         setSaving(false); setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+    };
+
+    const handlePasswordUpdate = async () => {
+        setSaving(true);
+        setPassError('');
+        try {
+            await changePassword({
+                currentPassword: passForm.current,
+                newPassword: passForm.next,
+                confirmPassword: passForm.confirm
+            });
+            setSavedMessage('Password updated successfully!');
+            setPassForm({ current: '', next: '', confirm: '' });
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch (err) {
+            setPassError(err.response?.data?.message || 'Failed to update password');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const initials = form.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
@@ -159,7 +183,7 @@ export default function Profile() {
                 <div className="flex items-center gap-3 px-4 py-3 rounded-2xl animate-scale-in"
                     style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
                     <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-semibold">Profile updated successfully!</span>
+                    <span className="text-sm font-semibold">{savedMessage}</span>
                 </div>
             )}
 
@@ -207,10 +231,14 @@ export default function Profile() {
                     {passForm.next && passForm.confirm && passForm.next !== passForm.confirm && (
                         <p className="text-xs text-red-400">Passwords do not match</p>
                     )}
+                    {passError && (
+                        <p className="text-xs text-red-400">{passError}</p>
+                    )}
                     <div className="flex justify-end">
-                        <button className="glass-btn px-6 py-2.5 text-sm flex items-center gap-2"
-                            disabled={!passForm.current || !passForm.next || passForm.next !== passForm.confirm}>
-                            <Lock className="w-4 h-4" /> Update Password
+                        <button className="glass-btn px-6 py-2.5 text-sm flex items-center gap-2 disabled:opacity-70"
+                            onClick={handlePasswordUpdate}
+                            disabled={!passForm.current || !passForm.next || passForm.next !== passForm.confirm || saving}>
+                            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating…</> : <><Lock className="w-4 h-4" /> Update Password</>}
                         </button>
                     </div>
                 </div>

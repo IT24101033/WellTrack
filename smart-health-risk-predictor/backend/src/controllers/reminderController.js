@@ -10,14 +10,15 @@ const Reminder = require('../models/reminderModel');
 // ── GET — upcoming/pending reminders for the authenticated user ───────────────
 exports.getUserReminders = async (req, res) => {
     try {
-        // Return unsent reminders due in the next 2 hours (for polling)
+        // Return unacknowledged reminders that triggered in the last 15 minutes, or will trigger in the next 2 hours
         const now = new Date();
-        const horizon = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        const horizonEnd = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        const horizonStart = new Date(now.getTime() - 15 * 60 * 1000);
 
         const reminders = await Reminder.find({
             userId: req.user.id,
-            isSent: false,
-            triggerTime: { $lte: horizon },
+            isAcknowledged: false,
+            triggerTime: { $gte: horizonStart, $lte: horizonEnd },
         }).sort({ triggerTime: 1 });
 
         res.json({ success: true, data: reminders });
@@ -43,6 +44,7 @@ exports.createReminder = async (req, res) => {
             activityTitle,
             activityCategory,
             isSent: false,
+            isAcknowledged: false,
         });
 
         res.status(201).json({ success: true, data: reminder });
@@ -74,7 +76,7 @@ exports.acknowledgeReminder = async (req, res) => {
     try {
         const reminder = await Reminder.findOneAndUpdate(
             { _id: req.params.id, userId: req.user.id },
-            { isSent: true },
+            { isAcknowledged: true },
             { new: true }
         );
         if (!reminder) {

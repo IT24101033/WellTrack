@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { Download, PlusCircle, Sparkles, TrendingUp, FileText, BarChart3, Moon, Activity, Heart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, PlusCircle, Sparkles, TrendingUp, FileText, BarChart3, Moon, Activity, Heart, Loader2 } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import HealthPDFImportCard from '../../components/HealthPDFImportCard/HealthPDFImportCard';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { getUserReports, getUserDashboard, createReport } from '../../services/reportService';
+import { fetchHealthEntries } from '../../services/healthService';
+import { useAuth } from '../../context/AuthContext';
 
 const GlassTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
@@ -18,22 +23,18 @@ const GlassTooltip = ({ active, payload, label }) => {
     );
 };
 
-const weekData = [
-    { day: 'Mon', sleep: 7.0, steps: 7500, stress: 4, risk: 32 },
-    { day: 'Tue', sleep: 6.5, steps: 9200, stress: 6, risk: 45 },
-    { day: 'Wed', sleep: 8.0, steps: 5800, stress: 3, risk: 28 },
-    { day: 'Thu', sleep: 6.0, steps: 10200, stress: 7, risk: 55 },
-    { day: 'Fri', sleep: 7.5, steps: 8300, stress: 5, risk: 38 },
-    { day: 'Sat', sleep: 8.5, steps: 12000, stress: 2, risk: 22 },
-    { day: 'Sun', sleep: 7.2, steps: 8432, stress: 4, risk: 25 },
+const initialWeekData = [
+    { day: 'Mon', sleep: 0, steps: 0, stress: 0, risk: 0 },
+    { day: 'Tue', sleep: 0, steps: 0, stress: 0, risk: 0 },
+    { day: 'Wed', sleep: 0, steps: 0, stress: 0, risk: 0 },
+    { day: 'Thu', sleep: 0, steps: 0, stress: 0, risk: 0 },
+    { day: 'Fri', sleep: 0, steps: 0, stress: 0, risk: 0 },
+    { day: 'Sat', sleep: 0, steps: 0, stress: 0, risk: 0 },
+    { day: 'Sun', sleep: 0, steps: 0, stress: 0, risk: 0 },
 ];
 
-const reports = [
-    { id: 1, name: 'Weekly Summary – W7', date: 'Feb 17, 2026', risk: 'Low', riskPct: 25, status: 'Completed' },
-    { id: 2, name: 'Weekly Summary – W6', date: 'Feb 10, 2026', risk: 'Moderate', riskPct: 48, status: 'Completed' },
-    { id: 3, name: 'Monthly Report – Jan', date: 'Feb 01, 2026', risk: 'Low', riskPct: 30, status: 'Completed' },
-];
-const riskColor = r => r === 'Low' ? '#10b981' : r === 'Moderate' ? '#f59e0b' : '#ef4444';
+const initialReports = [];
+const riskColor = r => r?.includes('Low') ? '#10b981' : r?.includes('Moderate') ? '#f59e0b' : '#ef4444';
 
 const SummaryCard = ({ icon: Icon, label, value, sub, color }) => (
     <div className="glass-card p-5">
@@ -95,18 +96,87 @@ function HeartRateChart({ hrData }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────
 export default function Reports() {
+    const { user } = useAuth();
     const [showModal, setShowModal] = useState(false);
+    const [selectedType, setSelectedType] = useState('Weekly Summary');
     const [importedHRData, setImportedHRData] = useState([]);
     const [importSummary, setImportSummary] = useState(null);
+    const [chartData, setChartData] = useState(initialWeekData);
+    const [reportsData, setReportsData] = useState(initialReports);
+    const [dashboardStats, setDashboardStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadDocs = async () => {
+            if (!user?._id && !user?.id) {
+                setLoading(false);
+                return;
+            }
+            try {
+                const uid = user.id || user._id;
+                // Fetch reports
+                const repRes = await getUserReports(uid);
+                if (repRes.data?.success) {
+                    const apiReps = repRes.data.data || [];
+                    const mapped = apiReps.map(r => ({
+                        id: r._id,
+                        name: r.report_type || 'Health Report',
+                        date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                        risk: (r.predicted_risk_level || 'Low').charAt(0).toUpperCase() + (r.predicted_risk_level || 'Low').slice(1) + ' Risk',
+                        riskPct: r.predicted_risk_score != null ? (r.predicted_risk_score * 100).toFixed(1) : 0,
+                        status: 'Saved'
+                    }));
+                    setReportsData(mapped);
+                }
+
+                // Fetch dashboard stats (total_reports, latest_risk_level)
+                const dashRes = await getUserDashboard(uid);
+                if (dashRes.data?.success) {
+                    setDashboardStats(dashRes.data.data);
+                }
+
+                // Fetch HealthEntries for the chart
+                const healthRes = await fetchHealthEntries({ limit: 7 });
+                if (healthRes.data?.success && healthRes.data.entries?.length > 0) {
+                    const sorted = [...healthRes.data.entries].sort((a, b) => a.date.localeCompare(b.date));
+                    const newChartData = sorted.map(e => ({
+                        day: new Date(e.date).toLocaleDateString('en-US', { weekday: 'short' }),
+                        sleep: e.physiological?.sleepHours || 0,
+                        steps: e.activity?.stepsPerDay ? Math.round(e.activity.stepsPerDay / 100) / 10 : 0,
+                        stress: e.psychological?.stressScore || 0,
+                        risk: e.healthScore !== undefined ? Math.max(0, 100 - e.healthScore) : 0 // approx risk
+                    }));
+                    while(newChartData.length < 7) {
+                        newChartData.unshift({ day: '-', sleep: 0, steps: 0, stress: 0, risk: 0 });
+                    }
+                    if (newChartData.length > 7) newChartData.splice(0, newChartData.length - 7);
+                    setChartData(newChartData);
+                }
+            } catch (err) {
+                console.error('Failed to load reports', err);
+            }
+            setLoading(false);
+        };
+        loadDocs();
+    }, [user]);
 
     // Called by HealthPDFImportCard after a successful import
     const handleImportSuccess = (apiResponse) => {
         if (apiResponse?.summary) {
-            setImportSummary(apiResponse.summary);
-        }
-        // We don't have per-record data from the summary endpoint,
-        // so we build a representative chart point from the aggregate
-        if (apiResponse?.summary) {
+            const riskData = apiResponse.risk || {};
+            const riskScorePct = riskData.score != null ? riskData.score * 100 : null;
+            const riskCategoryStr = riskData.level 
+                ? riskData.level.charAt(0).toUpperCase() + riskData.level.slice(1) + ' Risk' 
+                : null;
+                
+            const fullSummary = {
+                ...apiResponse.summary,
+                risk_score: riskScorePct,
+                risk_category: riskCategoryStr
+            };
+            
+            setImportSummary(fullSummary);
+            
             const s = apiResponse.summary;
             const newPoint = {
                 label: s.date_range?.split(' → ')[0] || 'Imported',
@@ -114,8 +184,117 @@ export default function Reports() {
                 hr_max: s.max_hr,
             };
             setImportedHRData(prev => [...prev, newPoint]);
+            
+            // Update charts dynamically with new risk score
+            if (fullSummary.risk_score != null) {
+                const latestRisk = parseFloat(fullSummary.risk_score);
+                setChartData(prevData => {
+                    const newData = [...prevData];
+                    // Update latest day with the new imported risk score
+                    newData[newData.length - 1] = { ...newData[newData.length - 1], risk: latestRisk };
+                    return newData;
+                });
+            }
         }
     };
+
+    const generateReportPDF = (report) => {
+        const doc = new jsPDF();
+        
+        // --- 1. Header Section ---
+        doc.setFontSize(24);
+        doc.setTextColor(15, 23, 42); // slate-900
+        doc.text("Smart Health Analytics Report", 14, 22);
+        
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(59, 130, 246); // Blue accent line
+        doc.line(14, 28, 196, 28);
+        
+        // --- 2. Report Metadata ---
+        doc.setFontSize(11);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Report Type: ${report.name}`, 14, 38);
+        doc.text(`Generated On: ${report.date}`, 14, 44);
+        doc.text(`Patient Profile: ${user?.fullName || 'Registered User'}`, 14, 50);
+
+        // --- 3. Executive Risk Summary ---
+        doc.setFontSize(14);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Executive Risk Summary", 14, 65);
+        
+        const isLow = report.risk?.includes('Low');
+        const isMed = report.risk?.includes('Moderate');
+        const riskColor = isLow ? [16, 185, 129] : isMed ? [245, 158, 11] : [239, 68, 68];
+        
+        doc.setFillColor(...riskColor);
+        doc.rect(14, 70, 182, 16, 'F');
+        
+        doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`Overall Health Risk: ${report.risk} (${report.riskPct}%)`, 20, 80);
+
+        // --- 4. 7-Day Wearable Data Breakdown ---
+        doc.setFontSize(14);
+        doc.setTextColor(15, 23, 42);
+        doc.text("7-Day Synced Wearable Data", 14, 102);
+
+        // Prepare table data from chartData
+        const realDays = chartData.filter(d => d.day !== '-');
+        const tableBody = realDays.map(d => [
+            d.day,
+            `${(d.steps * 1000).toLocaleString()} steps`,
+            `${d.sleep} hrs`,
+            `${d.stress}/10`,
+            `${d.risk.toFixed(1)}%`
+        ]);
+
+        autoTable(doc, {
+            startY: 108,
+            head: [['Day', 'Activity (Steps)', 'Sleep Duration', 'Stress Level', 'Daily Risk Impact']],
+            body: tableBody.length > 0 ? tableBody : [['No synced data available', '-', '-', '-', '-']],
+            theme: 'striped',
+            headStyles: { fillColor: [59, 130, 246] },
+            styles: { fontSize: 10, cellPadding: 4 },
+            alternateRowStyles: { fillColor: [241, 245, 249] }
+        });
+
+        const finalY = doc.lastAutoTable.finalY || 110;
+
+        // --- 5. AI Insights & Averages ---
+        doc.setFontSize(14);
+        doc.setTextColor(15, 23, 42);
+        doc.text("AI Health Insights", 14, finalY + 15);
+
+        const avgSteps = realDays.length ? Math.round(realDays.reduce((a,c) => a + c.steps * 1000, 0) / realDays.length) : 0;
+        const avgSleep = realDays.length ? (realDays.reduce((a,c) => a + c.sleep, 0) / realDays.length).toFixed(1) : 0;
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        const insightText = importSummary ? 
+            `Based on your imported clinical PDF and wearable data, your average resting heart rate is ${(importSummary.avg_hr || 0).toFixed(1)} bpm. Over the last 7 days, you've averaged ${avgSteps.toLocaleString()} steps and ${avgSleep} hours of sleep per day. Your current trajectory perfectly correlates with a ${report.risk} status. Maintain your current routines to optimize long-term health span.` : 
+            `Over the last 7 days, your smartwatch recorded an average of ${avgSteps.toLocaleString()} steps and ${avgSleep} hours of sleep per day. Maintaining consistent sleep schedules and meeting daily step goals will dramatically lower your overarching health risk profile over time.`;
+            
+        const insightLines = doc.splitTextToSize(insightText, 180);
+        doc.text(insightLines, 14, finalY + 23);
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text("Generated securely by Smart Health Risk Predictor Analytics. Do not share your medical records publicly.", 14, 285);
+
+        // Save
+        const safeName = report.name.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+        const filename = `${safeName}_Advanced_Risk_Report.pdf`;
+        doc.save(filename);
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#3b82f6' }} />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
@@ -138,9 +317,18 @@ export default function Reports() {
                 <div>
                     <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>AI Weekly Summary</p>
                     <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                        Your sleep improved by <strong>12%</strong> this week and stress was down on weekends.
-                        High step counts on Thursday offset elevated stress — keep it up!
-                        Consider reducing screen time on weekdays to further lower risk.
+                        {importSummary ? (
+                            <>
+                                Based on your imported PDF data ({importSummary.total_records || 'several'} records), 
+                                your average heart rate is <strong>{(importSummary.avg_hr || 0).toFixed(1)} bpm</strong>. 
+                                This brings your estimated health risk to <strong>{importSummary.risk_category || 'Low Risk'}</strong>. 
+                                Keep up the good work and maintain a balanced lifestyle!
+                            </>
+                        ) : (
+                            <>
+                                No recent activity to analyze. Import a health PDF or sync your wearable device to generate your weekly AI summary!
+                            </>
+                        )}
                     </p>
                 </div>
             </div>
@@ -155,11 +343,10 @@ export default function Reports() {
 
             {/* Summary cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <SummaryCard icon={Moon} label="Avg Sleep" value="7.2h" sub="▲ +30m vs last wk" color="#6366f1" />
-                <SummaryCard icon={Activity} label="Avg Steps" value="8,790" sub="▼ -8% vs last wk" color="#f97316" />
-                <SummaryCard icon={TrendingUp} label="Avg Risk" value={importSummary ? `${(importSummary.avg_hr || 0).toFixed(0)} bpm` : '35%'}
-                    sub={importSummary ? '❤️ from PDF import' : '▼ Improving'} color="#10b981" />
-                <SummaryCard icon={BarChart3} label="Reports Total" value="3" sub="This month" color="#3b82f6" />
+                <SummaryCard icon={Moon} label="Avg Sleep" value={chartData.reduce((acc, c) => acc + c.sleep, 0) > 0 ? (chartData.reduce((acc, c) => acc + c.sleep, 0) / chartData.filter(c => c.sleep > 0).length).toFixed(1) + 'h' : '0.0h'} sub="Last 7 days" color="#6366f1" />
+                <SummaryCard icon={Activity} label="Avg Steps" value={chartData.reduce((acc, c) => acc + c.steps * 1000, 0) > 0 ? Math.round(chartData.reduce((acc, c) => acc + c.steps * 1000, 0) / chartData.filter(c => c.steps > 0).length).toLocaleString() : '0'} sub="Last 7 days" color="#f97316" />
+                <SummaryCard icon={TrendingUp} label="Avg Risk" value={dashboardStats?.average_risk_score != null ? `${(dashboardStats.average_risk_score * 100).toFixed(1)}%` : (importSummary ? `${importSummary.risk_score}%` : '0%')} sub={dashboardStats ? 'Overall Risk' : '—'} color="#10b981" />
+                <SummaryCard icon={BarChart3} label="Reports Total" value={dashboardStats?.total_reports?.toString() || reportsData.length.toString()} sub="Total history" color="#3b82f6" />
             </div>
 
             {/* Charts */}
@@ -169,7 +356,7 @@ export default function Reports() {
                     <h2 className="font-bold text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Sleep vs Risk Score</h2>
                     <div className="h-52">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={weekData} margin={{ left: -20, right: 8 }}>
+                            <AreaChart data={chartData} margin={{ left: -20, right: 8 }}>
                                 <defs>
                                     <linearGradient id="sleepGr" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
@@ -197,7 +384,7 @@ export default function Reports() {
                     <h2 className="font-bold text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Daily Steps &amp; Stress</h2>
                     <div className="h-52">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={weekData} margin={{ left: -20, right: 8 }}>
+                            <BarChart data={chartData} margin={{ left: -20, right: 8 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
                                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
@@ -225,7 +412,7 @@ export default function Reports() {
                             </tr>
                         </thead>
                         <tbody>
-                            {reports.map(r => (
+                            {reportsData.map(r => (
                                 <tr key={r.id} className="transition-colors"
                                     onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -247,7 +434,7 @@ export default function Reports() {
                                             style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>{r.status}</span>
                                     </td>
                                     <td className="py-3 px-3">
-                                        <button className="flex items-center gap-1 text-xs glass-btn-outline px-3 py-1.5">
+                                        <button onClick={() => generateReportPDF(r)} className="flex items-center gap-1 text-xs glass-btn-outline px-3 py-1.5">
                                             <Download className="w-3.5 h-3.5" /> PDF
                                         </button>
                                     </td>
@@ -267,17 +454,63 @@ export default function Reports() {
                         <h2 className="font-bold text-base mb-4" style={{ color: 'var(--text-primary)' }}>Generate New Report</h2>
                         <div className="space-y-3">
                             {['Weekly Summary', 'Monthly Overview', 'Custom Date Range'].map(t => (
-                                <button key={t} className="w-full text-left p-3 rounded-2xl text-sm font-medium transition-all duration-200"
-                                    style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}>
+                                <button 
+                                    key={t} 
+                                    onClick={() => setSelectedType(t)}
+                                    className="w-full text-left p-3 rounded-2xl text-sm font-medium transition-all duration-200"
+                                    style={{ 
+                                        background: selectedType === t ? 'rgba(59,130,246,0.1)' : 'var(--glass-bg)', 
+                                        border: `1px solid ${selectedType === t ? '#3b82f6' : 'var(--glass-border)'}`, 
+                                        color: 'var(--text-primary)' 
+                                    }}
+                                    onMouseEnter={e => { if(selectedType !== t) e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
+                                    onMouseLeave={e => { if(selectedType !== t) e.currentTarget.style.background = 'var(--glass-bg)'; }}>
                                     {t}
                                 </button>
                             ))}
                         </div>
                         <div className="flex justify-end gap-3 mt-5">
                             <button className="glass-btn-outline px-4 py-2 text-sm" onClick={() => setShowModal(false)}>Cancel</button>
-                            <button className="glass-btn px-4 py-2 text-sm" onClick={() => setShowModal(false)}>Generate</button>
+                            <button className="glass-btn px-4 py-2 text-sm flex items-center gap-2" onClick={async () => {
+                                const uid = user?.id || user?._id;
+                                if (!uid) return;
+                                let riskLevel = importSummary ? importSummary.risk_category : 'Low Risk';
+                                let riskPercentage = importSummary ? parseFloat(importSummary.risk_score).toFixed(1) : 25;
+                                let rId = Date.now().toString();
+
+                                try {
+                                    // Make backend createReport call
+                                    const d = new Date();
+                                    const res = await createReport({
+                                        user_id: uid,
+                                        report_type: selectedType,
+                                        start_date: new Date(d.setDate(d.getDate() - 7)).toISOString(),
+                                        end_date: new Date().toISOString(),
+                                        health_data: [],
+                                        predicted_risk_score: importSummary ? (parseFloat(importSummary.risk_score) / 100).toFixed(4) : 0.25,
+                                    });
+                                    if (res.data?.success) {
+                                        const r = res.data.data;
+                                        rId = r._id;
+                                        riskLevel = (r.predicted_risk_level || 'Low').charAt(0).toUpperCase() + (r.predicted_risk_level || 'Low').slice(1) + ' Risk';
+                                        if (r.predicted_risk_score != null) riskPercentage = (r.predicted_risk_score * 100).toFixed(1);
+                                    }
+                                } catch (e) {
+                                     // Proceed with local fallback payload
+                                }
+
+                                const newReport = {
+                                    id: rId,
+                                    name: selectedType,
+                                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                                    risk: riskLevel,
+                                    riskPct: riskPercentage,
+                                    status: 'Just Generated'
+                                };
+                                setReportsData(prev => [newReport, ...prev]);
+                                generateReportPDF(newReport);
+                                setShowModal(false);
+                            }}>Generate</button>
                         </div>
                     </div>
                 </div>

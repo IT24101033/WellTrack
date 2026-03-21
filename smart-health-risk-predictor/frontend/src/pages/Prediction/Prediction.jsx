@@ -60,16 +60,9 @@ const GlassTooltip = ({ active, payload, label }) => {
     );
 };
 
-const trendData = [
-    { day: 'Mon', risk: 30 }, { day: 'Tue', risk: 45 }, { day: 'Wed', risk: 35 },
-    { day: 'Thu', risk: 55 }, { day: 'Fri', risk: 40 }, { day: 'Sat', risk: 28 }, { day: 'Sun', risk: 25 },
-];
+const trendData = [];
 
-const historyItems = [
-    { date: 'Today 09:30', level: 'low', pct: 25, factors: ['Good sleep', 'Active day', 'Low stress'] },
-    { date: 'Yesterday', level: 'moderate', pct: 52, factors: ['High screen time', 'Irregular sleep'] },
-    { date: '2 days ago', level: 'high', pct: 78, factors: ['Late night', 'Very high stress', 'No exercise'] },
-];
+const historyItems = [];
 
 const levelColor = l => l === 'low' ? '#10b981' : l === 'moderate' ? '#f59e0b' : '#ef4444';
 
@@ -111,7 +104,7 @@ export default function Prediction() {
                     {!predicted ? (
                         <div className="text-center space-y-3">
                             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                                Based on: Sleep 7h 20m · Steps 8,432 · Stress: Moderate
+                                Based on your latest health metrics
                             </p>
                             <button onClick={handlePredict} disabled={loading}
                                 className="glass-btn px-8 py-3 flex items-center gap-2 text-sm">
@@ -126,7 +119,7 @@ export default function Prediction() {
                                 style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                                 <p className="text-xs font-semibold mb-2" style={{ color: '#10b981' }}>Contributing factors:</p>
                                 <ul className="space-y-1">
-                                    {['Good sleep duration (7h 20m)', 'Reasonable step count (8,432)', 'Moderate stress – watch closely'].map(f => (
+                                    {['Awaiting enough data for detailed analysis.'].map(f => (
                                         <li key={f} className="text-xs flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                                             <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#10b981' }} /> {f}
                                         </li>
@@ -150,25 +143,31 @@ export default function Prediction() {
                         </div>
                         <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>7-Day Risk Trend</h2>
                     </div>
-                    <div className="h-52">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={trendData} margin={{ left: -20, right: 8 }}>
-                                <defs>
-                                    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor="#8b5cf6" />
-                                        <stop offset="100%" stopColor="#3b82f6" />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
-                                <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                                <Tooltip content={<GlassTooltip />} />
-                                <Line type="monotone" dataKey="risk" name="Risk %" stroke="url(#lineGrad)"
-                                    strokeWidth={2.5} dot={{ fill: '#3b82f6', strokeWidth: 0, r: 4 }}
-                                    activeDot={{ r: 6, fill: '#8b5cf6' }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+                    {trendData.length > 0 ? (
+                        <div className="h-52">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={trendData} margin={{ left: -20, right: 8 }}>
+                                    <defs>
+                                        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stopColor="#8b5cf6" />
+                                            <stop offset="100%" stopColor="#3b82f6" />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
+                                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                                    <Tooltip content={<GlassTooltip />} />
+                                    <Line type="monotone" dataKey="risk" name="Risk %" stroke="url(#lineGrad)"
+                                        strokeWidth={2.5} dot={{ fill: '#3b82f6', strokeWidth: 0, r: 4 }}
+                                        activeDot={{ r: 6, fill: '#8b5cf6' }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-52 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                            No trend data available.
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -178,34 +177,40 @@ export default function Prediction() {
                     <Sparkles className="w-5 h-5" style={{ color: '#8b5cf6' }} />
                     <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Prediction History</h2>
                 </div>
-                <div className="space-y-3">
-                    {historyItems.map((item, i) => (
-                        <div key={i} className="flex items-start gap-4 p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
-                            style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                                style={{ background: `${levelColor(item.level)}15`, border: `1px solid ${levelColor(item.level)}25` }}>
-                                {item.level === 'low' ? <CheckCircle className="w-5 h-5" style={{ color: levelColor(item.level) }} />
-                                    : <AlertCircle className="w-5 h-5" style={{ color: levelColor(item.level) }} />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="text-sm font-semibold capitalize" style={{ color: levelColor(item.level) }}>
-                                        {item.level} Risk – {item.pct}%
-                                    </span>
-                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.date}</span>
+                {historyItems.length > 0 ? (
+                    <div className="space-y-3">
+                        {historyItems.map((item, i) => (
+                            <div key={i} className="flex items-start gap-4 p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+                                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                    style={{ background: `${levelColor(item.level)}15`, border: `1px solid ${levelColor(item.level)}25` }}>
+                                    {item.level === 'low' ? <CheckCircle className="w-5 h-5" style={{ color: levelColor(item.level) }} />
+                                        : <AlertCircle className="w-5 h-5" style={{ color: levelColor(item.level) }} />}
                                 </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {item.factors.map(f => (
-                                        <span key={f} className="text-xs px-2 py-0.5 rounded-full"
-                                            style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}>
-                                            {f}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-semibold capitalize" style={{ color: levelColor(item.level) }}>
+                                            {item.level} Risk – {item.pct}%
                                         </span>
-                                    ))}
+                                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.date}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {item.factors.map(f => (
+                                            <span key={f} className="text-xs px-2 py-0.5 rounded-full"
+                                                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}>
+                                                {f}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-6 text-sm" style={{ color: 'var(--text-muted)' }}>
+                        No prediction history available yet.
+                    </div>
+                )}
             </div>
         </div>
     );

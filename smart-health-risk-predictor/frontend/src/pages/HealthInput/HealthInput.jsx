@@ -119,16 +119,18 @@ export default function HealthInput() {
     const bmiMeta = bmiInfo(bmi);
     const riskAlert = Number(form.stressScore) > 8 && Number(form.sleepHours) < 5;
 
-    // Load today's existing record (update mode)
+    // Load existing record for selected date
     useEffect(() => {
-        const loadToday = async () => {
+        const loadDateData = async () => {
+            setLoadingToday(true);
             try {
-                const res = await fetchHealthEntries({ from: todayStr(), to: todayStr(), limit: 1 });
+                const res = await fetchHealthEntries({ from: form.date, to: form.date, limit: 1 });
                 if (res.data?.entries?.length > 0) {
                     const rec = res.data.entries[0];
                     setExistingId(rec._id);
                     // Flatten nested data back into form
                     setForm(f => ({
+                        ...INITIAL_FORM, // reset to default first to clear old fields
                         ...f,
                         date: rec.date,
                         ...rec.physiological,
@@ -136,12 +138,19 @@ export default function HealthInput() {
                         ...rec.activity,
                         ...rec.psychological,
                     }));
+                } else {
+                    setExistingId(null);
+                    setForm(f => ({ ...INITIAL_FORM, date: f.date }));
                 }
-            } catch { /* ignore — first entry */ }
+            } catch { 
+                setExistingId(null);
+                setForm(f => ({ ...INITIAL_FORM, date: f.date }));
+            }
             setLoadingToday(false);
         };
-        loadToday();
-    }, []);
+        loadDateData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.date]);
 
     const set = useCallback((field, value) => {
         setForm(f => ({ ...f, [field]: value }));
@@ -175,7 +184,7 @@ export default function HealthInput() {
 
     const handleNext = () => { if (validate()) setStep(s => Math.min(s + 1, 4)); };
     const handleBack = () => setStep(s => Math.max(s - 1, 1));
-    const handleReset = () => { setForm({ ...INITIAL_FORM, date: todayStr() }); setStep(1); setErrors({}); setExistingId(null); };
+    const handleReset = () => { setForm(f => ({ ...INITIAL_FORM, date: f.date })); setStep(1); setErrors({}); setExistingId(null); };
 
     const buildPayload = () => ({
         date: form.date,
@@ -209,6 +218,7 @@ export default function HealthInput() {
 
     const handleSave = async () => {
         setSaving(true);
+        let successInfo = false;
         try {
             const payload = buildPayload();
             if (existingId) {
@@ -220,6 +230,7 @@ export default function HealthInput() {
                 showToast('success', '✅ Health data saved!');
             }
             setSaved(true);
+            successInfo = true;
             if (riskAlert) showToast('alert', '⚠️ High stress + low sleep detected! Please rest.');
             setTimeout(() => setSaved(false), 3000);
         } catch (err) {
@@ -227,6 +238,7 @@ export default function HealthInput() {
             showToast('error', '❌ ' + msg);
         }
         setSaving(false);
+        return successInfo;
     };
 
     const renderSection = () => {
@@ -493,11 +505,17 @@ export default function HealthInput() {
                     </div>
                     <div>
                         <h1 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
-                            {existingId ? 'Update Today\'s Health Data' : 'Daily Health Check-in'}
+                            {existingId ? 'Update Health Data' : 'Daily Health Check-in'}
                         </h1>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {existingId ? '✏️ Editing existing record' : form.date} · {user?.fullName?.split(' ')[0] || 'Student'}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <input type="date" value={form.date} onChange={e => set('date', e.target.value)} 
+                                className="glass-input px-2 py-0.5 text-xs font-semibold rounded-md border" 
+                                style={{ width: 'auto', minHeight: 'unset', borderColor: 'var(--glass-border)' }}
+                                max={todayStr()} />
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                · {existingId ? '✏️ Editing record' : '📝 New record'} · {user?.fullName?.split(' ')[0] || 'Student'}
+                            </p>
+                        </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold"
@@ -584,7 +602,7 @@ export default function HealthInput() {
                         <button onClick={handleReset} className="glass-btn-outline px-4 py-2.5 flex items-center gap-2">
                             <RotateCcw className="w-4 h-4" /> Reset
                         </button>
-                        <button onClick={() => { handleSave(); navigate('/prediction'); }} disabled={saving}
+                        <button onClick={async () => { const s = await handleSave(); if(s) navigate('/prediction'); }} disabled={saving}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold text-white transition-all duration-200 disabled:opacity-70"
                             style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 16px rgba(139,92,246,0.4)' }}>
                             {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Brain className="w-4 h-4" /> Save & Predict</>}

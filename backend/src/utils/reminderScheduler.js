@@ -9,6 +9,8 @@
 const cron = require('node-cron');
 const Reminder = require('../models/reminderModel');
 const Notification = require('../models/notificationModel');
+const User = require('../models/User');
+const { sendEmail, sendSMS } = require('./notificationService');
 
 const CATEGORY_LABELS = {
     Workout: 'workout',
@@ -30,20 +32,35 @@ const processReminders = async () => {
 
         if (dueReminders.length === 0) return;
 
-        // Create notification documents for each due reminder
-        const notifications = dueReminders.map((reminder) => ({
-            userId: reminder.userId,
-            title: `⏰ Reminder: ${reminder.activityTitle || 'Activity starting soon'}`,
-            message: `Your ${reminder.activityCategory || ''} activity "${reminder.activityTitle || ''}" is starting soon!`,
-            type: 'wellness',
-            status: 'unread',
-        }));
+        // Process each reminder individually to handle notifications
+        for (const reminder of dueReminders) {
+            const user = await User.findById(reminder.userId);
+            const title = `⏰ Reminder: ${reminder.activityTitle || 'Activity starting soon'}`;
+            const message = `Your ${reminder.activityCategory || ''} activity "${reminder.activityTitle || ''}" is starting soon!`;
 
-        await Notification.insertMany(notifications);
+            // 1. In-app notification
+            await Notification.create({
+                userId: reminder.userId,
+                title,
+                message,
+                type: 'wellness',
+                status: 'unread',
+            });
 
-        // Mark all as sent
-        const ids = dueReminders.map((r) => r._id);
-        await Reminder.updateMany({ _id: { $in: ids } }, { isSent: true });
+            // 2. Email notification (if enabled)
+            if (user?.emailEnabled && user?.email) {
+                await sendEmail(user.email, title, message);
+            }
+
+            // 3. SMS notification (if enabled)
+            if (user?.smsEnabled && user?.phoneNumber) {
+                await sendSMS(user.phoneNumber, message);
+            }
+
+            // Mark as sent
+            reminder.isSent = true;
+            await reminder.save();
+        }
 
         console.log(`[ReminderScheduler] Processed ${dueReminders.length} reminder(s).`);
     } catch (err) {

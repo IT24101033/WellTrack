@@ -52,6 +52,14 @@ const lifestyleTipSchema = new mongoose.Schema(
         is_active: {
             type: Boolean,
             default: true
+        },
+        ai_insights: {
+            type: String,
+            default: null
+        },
+        youtube_url: {
+            type: String,
+            default: null
         }
     },
     {

@@ -84,6 +84,16 @@ const userSchema = new mongoose.Schema(
             default: '',
         },
 
+        // ── Fitbit integration ──────────────────────────────────────────────────
+        fitbitAccessToken: { type: String, default: null },
+        fitbitRefreshToken: { type: String, default: null },
+        fitbitUserId: { type: String, default: null },
+
+        // ── Notification preferences ─────────────────────────────────────────────
+        emailEnabled: { type: Boolean, default: true },
+        smsEnabled: { type: Boolean, default: false },
+        phoneNumber: { type: String, default: '' },
+
         // ── Activity log ───────────────────────────────────────────────────────
         activityLog: {
             type: [activityLogSchema],

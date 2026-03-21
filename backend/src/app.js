@@ -15,7 +15,9 @@ const activityRoutes = require('./routes/activityRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const wellnessRoutes = require('./routes/wellnessRoutes');
-const tipRoutes = require('./routes/tipRoutes'); // Added tip routes
+const tipRoutes = require('./routes/tipRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const fitbitRoutes = require('./routes/fitbitRoutes');
 
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
@@ -78,6 +80,8 @@ app.use('/api', userSettingsRoutes);   // /api/subscription + /api/preferences
 app.get('/api/dashboard/:userId', authenticate, getDashboard);
 app.use('/api/wellness', wellnessRoutes); // Food & Lifestyle Tips Management
 app.use('/api/tips', tipRoutes); // Lifestyle Tips 
+app.use('/api/ai', aiRoutes);
+app.use('/api/fitbit', fitbitRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) =>

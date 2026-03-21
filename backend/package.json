@@ -16,13 +16,16 @@
         "express": "^4.18.3",
         "express-rate-limit": "^7.2.0",
         "helmet": "^7.1.0",
+        "https-proxy-agent": "^8.0.0",
         "jsonwebtoken": "^9.0.2",
         "mongoose": "^8.2.4",
         "morgan": "^1.10.0",
         "multer": "^2.0.2",
         "node-cron": "^4.2.1",
+        "nodemailer": "^8.0.3",
         "pdf-parse": "^2.4.5",
-        "pdfjs-dist": "^3.11.174"
+        "pdfjs-dist": "^3.11.174",
+        "twilio": "^5.13.0"
     },
     "devDependencies": {
         "nodemon": "^3.1.0"

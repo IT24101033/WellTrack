@@ -1,11 +1,7 @@
 'use strict';
 
-/**
- * server.js
- * HTTP server entry point — connects to MongoDB then starts Express.
- */
-
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { connect } = require('./config/db');
 const app = require('./app');

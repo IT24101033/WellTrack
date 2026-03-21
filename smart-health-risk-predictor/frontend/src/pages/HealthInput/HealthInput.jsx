@@ -160,6 +160,14 @@ export default function HealthInput() {
             if (!form.weight || form.weight < 20 || form.weight > 300) e.weight = 'Weight in kg (20–300)';
             if (form.restingHeartRate && (form.restingHeartRate < 40 || form.restingHeartRate > 180)) e.restingHeartRate = 'Heart rate 40–180 bpm';
             if (form.sleepHours < 0 || form.sleepHours > 24) e.sleepHours = 'Sleep 0–24 hours';
+        } else if (step === 2) {
+            if (form.waterIntake < 0 || form.waterIntake > 15) e.waterIntake = 'Valid range: 0–15 L';
+            if (form.caffeineIntake < 0 || form.caffeineIntake > 20) e.caffeineIntake = 'Valid range: 0–20 cups';
+        } else if (step === 3) {
+            if (form.stepsPerDay < 0 || form.stepsPerDay > 150000) e.stepsPerDay = 'Valid range: 0–150,000';
+            if (form.exerciseMinutes < 0 || form.exerciseMinutes > 1440) e.exerciseMinutes = 'Valid range: 0–1440 min';
+            if (form.sedentaryHours < 0 || form.sedentaryHours > 24) e.sedentaryHours = 'Valid range: 0–24 h';
+            if (form.screenTimeHours < 0 || form.screenTimeHours > 24) e.screenTimeHours = 'Valid range: 0–24 h';
         }
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -290,7 +298,11 @@ export default function HealthInput() {
                             <FieldLabel icon={Droplets} label="Water Intake (liters/day)" color="#3b82f6" tooltip="Recommended: 2–3 L/day" />
                             <GInput type="number" placeholder="2.0" min="0" max="10" step="0.1"
                                 value={form.waterIntake} onChange={e => set('waterIntake', e.target.value)} />
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Recommended: 2–3 L/day</p>
+                            {errors.waterIntake ? (
+                                <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.waterIntake}</p>
+                            ) : (
+                                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Recommended: 2–3 L/day</p>
+                            )}
                         </div>
                         <div>
                             <FieldLabel icon={Coffee} label="Caffeine Intake (cups/day)" color="#92400e" tooltip="Coffee, tea, energy drinks" />
@@ -298,6 +310,7 @@ export default function HealthInput() {
                                 <GSlider value={Number(form.caffeineIntake)} onChange={v => set('caffeineIntake', v)} min={0} max={10} color="#92400e" />
                                 <span className="text-lg font-bold w-8 text-center" style={{ color: '#92400e' }}>{form.caffeineIntake}</span>
                             </div>
+                            {errors.caffeineIntake && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.caffeineIntake}</p>}
                         </div>
                         <div>
                             <FieldLabel icon={Flame} label="Junk Food Frequency" color="#f97316" tooltip="How often do you eat junk food?" />
@@ -336,23 +349,33 @@ export default function HealthInput() {
                             <FieldLabel icon={Zap} label="Steps Per Day" color="#f97316" tooltip="Total steps tracked. Goal: 10,000" />
                             <GInput type="number" placeholder="8000" min="0" max="100000"
                                 value={form.stepsPerDay} onChange={e => set('stepsPerDay', e.target.value)} />
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Goal: 10,000 steps/day</p>
+                            {errors.stepsPerDay ? (
+                                <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.stepsPerDay}</p>
+                            ) : (
+                                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Goal: 10,000 steps/day</p>
+                            )}
                         </div>
                         <div>
                             <FieldLabel icon={Activity} label="Exercise Minutes" color="#f97316" tooltip="Total active exercise time today" />
                             <GInput type="number" placeholder="30" min="0" max="480"
                                 value={form.exerciseMinutes} onChange={e => set('exerciseMinutes', e.target.value)} />
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>WHO recommends 30 min/day</p>
+                            {errors.exerciseMinutes ? (
+                                <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.exerciseMinutes}</p>
+                            ) : (
+                                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>WHO recommends 30 min/day</p>
+                            )}
                         </div>
                         <div>
                             <FieldLabel icon={Clock} label="Sedentary Hours" color="#94a3b8" tooltip="Hours sitting/lying down (excluding sleep)" />
                             <GInput type="number" placeholder="6" min="0" max="18"
                                 value={form.sedentaryHours} onChange={e => set('sedentaryHours', e.target.value)} />
+                            {errors.sedentaryHours && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.sedentaryHours}</p>}
                         </div>
                         <div>
                             <FieldLabel icon={Smartphone} label="Screen Time (hours)" color="#3b82f6" tooltip="Total hours on phone, PC, TV" />
                             <GInput type="number" placeholder="4" min="0" max="24"
                                 value={form.screenTimeHours} onChange={e => set('screenTimeHours', e.target.value)} />
+                            {errors.screenTimeHours && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.screenTimeHours}</p>}
                         </div>
                         <div className="md:col-span-2">
                             <div className="flex items-center justify-between p-4 rounded-2xl transition-all"

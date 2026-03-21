@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { User, Lock, AlertTriangle, Camera, Save, Eye, EyeOff, Loader2, CheckCircle2, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { changePassword } from '../../services/userService';
+import { changePassword, deleteProfile } from '../../services/userService';
+import { useNavigate } from 'react-router-dom';
 
 const TABS = [
     { id: 'profile', label: 'Profile Info', icon: User },
@@ -47,7 +48,8 @@ const bmiLabel = b => {
 };
 
 export default function Profile() {
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, logout } = useAuth();
+    const navigate = useNavigate();
     const [tab, setTab] = useState('profile');
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -108,6 +110,19 @@ export default function Profile() {
             setTimeout(() => setSaved(false), 3000);
         } catch (err) {
             setPassError(err.response?.data?.message || 'Failed to update password');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleAccountDeactivation = async () => {
+        setSaving(true);
+        try {
+            await deleteProfile();
+            logout();
+            navigate('/');
+        } catch (err) {
+            console.error('Failed to deactivate account', err);
         } finally {
             setSaving(false);
         }
@@ -266,10 +281,11 @@ export default function Profile() {
                             style={{ borderColor: confirmDelete ? (confirmDelete === (form.username || user?.username) ? 'rgba(239,68,68,0.5)' : '') : '' }} />
                     </div>
                     <button
-                        disabled={confirmDelete !== (form.username || user?.username)}
-                        className="w-full py-2.5 rounded-2xl text-sm font-bold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={handleAccountDeactivation}
+                        disabled={confirmDelete !== (form.username || user?.username) || saving}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                         style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}>
-                        Deactivate Account Permanently
+                        {saving ? <><Loader2 className="w-5 h-5 animate-spin" /> Deactivating...</> : 'Deactivate Account Permanently'}
                     </button>
                 </div>
             )}

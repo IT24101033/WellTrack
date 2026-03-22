@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Activity, UserCircle, FileText, Bell,
     Lightbulb, Calendar, LogOut, PlusCircle, ShieldCheck,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, Watch
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -14,6 +14,7 @@ const links = [
     { name: 'Reports', href: '/reports', icon: FileText },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Tips & Advice', href: '/tips', icon: Lightbulb },
+    { name: 'Watch Sync', href: '/watch-sync', icon: Watch },
     { name: 'Schedule', href: '/schedule', icon: Calendar },
     { name: 'Profile', href: '/profile', icon: UserCircle },
 ];

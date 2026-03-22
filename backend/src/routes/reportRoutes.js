@@ -24,7 +24,7 @@ const {
     getDashboard,
     filterReports,
 } = require('../controllers/reportController');
-const { importHealthPdf } = require('../controllers/pdfImportController');
+const { importHealthPdf, getAnalyticsSummary } = require('../controllers/pdfImportController');
 
 // ── Multer: memory storage — no files written to disk ─────────────────────────
 const upload = multer({
@@ -39,9 +39,10 @@ const upload = multer({
 // All routes require authentication
 router.use(authenticate);
 
-// ── PDF Import ─────────────────────────────────────────────────────────────────
+// ── PDF Import & Analytics ─────────────────────────────────────────────────────
 // POST /api/reports/import-health-pdf  ← MUST be before /:id
 router.post('/import-health-pdf', upload.single('file'), importHealthPdf);
+router.get('/analytics-summary', getAnalyticsSummary);
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 router.post('/', createReport);

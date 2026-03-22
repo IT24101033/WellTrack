@@ -61,9 +61,6 @@ const getTipsByCategory = async (req, res, next) => {
 // GET /api/tips/student/:studentId
 const getPersonalizedTips = async (req, res, next) => {
     try {
-        // In a real scenario, fetch student data. For now, simulate personalization based on query params.
-        // Assuming some recent health record data might be passed or fetched via studentId.
-        // For demonstration, let's say we fetch it. We will try to load StudentHealth record.
         const StudentHealth = require('../models/studentHealthModel');
         const latestHealth = await StudentHealth.findOne({ userId: req.params.studentId }).sort({ assessmentDate: -1 });
 
@@ -80,18 +77,47 @@ const getPersonalizedTips = async (req, res, next) => {
                 targetTypes.push('FITNESS');
             }
         } else {
-            // Default targets if no health record
             targetTypes = ['GENERAL', 'SLEEP', 'STRESS', 'FITNESS'];
         }
 
-        const tips = await LifestyleTip.find({
+        const globalTips = await LifestyleTip.find({
             is_active: true,
-            target_type: { $in: targetTypes }
+            target_type: { $in: targetTypes },
+            created_by: { $ne: req.params.studentId }
         }).limit(10);
+
+        const scheduledTips = await LifestyleTip.find({
+            is_active: true,
+            created_by: req.params.studentId
+        });
+
+        const tips = [...globalTips, ...scheduledTips];
 
         res.status(200).json({ success: true, data: tips });
     } catch (error) {
         console.error("Personalization error:", error);
+        next(error);
+    }
+};
+
+// POST /api/tips/schedule
+const scheduleTip = async (req, res, next) => {
+    try {
+        const { title, description, category, target_type, difficulty_level, time } = req.body;
+        
+        const newTip = await LifestyleTip.create({
+            title,
+            description,
+            category: category.toUpperCase(),
+            difficulty_level: difficulty_level || 'EASY',
+            recommended_time: time || '',
+            target_type: target_type || 'GENERAL',
+            created_by: req.user.id,
+            source: 'EXTERNAL'
+        });
+
+        res.status(201).json({ success: true, data: newTip });
+    } catch (error) {
         next(error);
     }
 };
@@ -183,7 +209,7 @@ const importWorkoutTips = async (req, res, next) => {
             const existing = await LifestyleTip.findOne({ external_id: exercise.id.toString(), source: 'EXTERNAL' });
             if (!existing) {
                 await LifestyleTip.create({
-                    title: exercise.name,
+                    title: exercise.name || 'Workout Exercise',
                     description: cleanDescription,
                     category: 'WORKOUT',
                     difficulty_level: 'MEDIUM',
@@ -245,5 +271,6 @@ module.exports = {
     deleteTip,
     importDietTips,
     importWorkoutTips,
-    importMentalTips
+    importMentalTips,
+    scheduleTip
 };

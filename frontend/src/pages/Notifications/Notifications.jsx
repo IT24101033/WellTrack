@@ -17,8 +17,8 @@ import {
 const TYPE_ICON = { appointment: Calendar, medication: Pill, wellness: Heart, system: Bell };
 const TYPE_COLOR = { appointment: '#3B82F6', medication: '#8B5CF6', wellness: '#10B981', system: '#F59E0B' };
 
-const PLAN_PRICES = { Free: '$0', Premium: '$9.99', Pro: '$19.99' };
-const PLAN_AMOUNTS = { Free: 0, Premium: 9.99, Pro: 19.99 };
+const PLAN_PRICES = { Free: 'Rs 0', Premium: 'Rs 300', Pro: 'Rs 500' };
+const PLAN_AMOUNTS = { Free: 0, Premium: 300, Pro: 500 };
 const PLAN_FEATURES = {
     Free: ['Basic notifications', 'Daily health summary'],
     Premium: ['Basic notifications', 'Daily health summary', 'Medication alerts', 'Appointment reminders', 'Weekly reports'],
@@ -87,7 +87,7 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                         <div style={{ fontSize: 20, fontWeight: 800, background: 'linear-gradient(135deg,#3B82F6,#10B981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{plan} Plan</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 26, fontWeight: 800, color: '#F1F5F9' }}>${amount.toFixed(2)}</div>
+                        <div style={{ fontSize: 26, fontWeight: 800, color: '#F1F5F9' }}>Rs {amount.toFixed(0)}</div>
                         <div style={{ fontSize: 11, color: '#94A3B8' }}>per month</div>
                     </div>
                 </div>
@@ -314,17 +314,25 @@ function PlanCard({ plan, t, currentPlan, onSelectPlan }) {
                 ))}
             </div>
             <button
-                onClick={() => !current && !isFree && onSelectPlan(plan)}
-                disabled={current || isFree}
+                onClick={() => {
+                    if (current) return;
+                    if (isFree) {
+                        // Directly trigger downgrade
+                        onSelectPlan('Free_Direct');
+                    } else {
+                        onSelectPlan(plan);
+                    }
+                }}
+                disabled={current}
                 style={{
                     width: '100%', padding: '10px 0', borderRadius: 12, border: 'none',
-                    cursor: current || isFree ? 'default' : 'pointer',
+                    cursor: current ? 'default' : 'pointer',
                     background: current ? t.border : isFree ? t.border : 'linear-gradient(135deg,#3B82F6,#10B981)',
-                    color: current || isFree ? t.sub : '#fff', fontWeight: 700, fontSize: 13,
+                    color: current ? t.sub : isFree ? t.text : '#fff', fontWeight: 700, fontSize: 13,
                     transition: 'opacity .2s',
                 }}
             >
-                {current ? 'Current Plan' : isFree ? 'Free Plan' : 'Get ' + plan}
+                {current ? 'Current Plan' : isFree ? 'Downgrade to Free' : 'Get ' + plan}
             </button>
         </div>
     );
@@ -593,7 +601,16 @@ export default function Notifications() {
                     {/* Pricing cards */}
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                         {['Free', 'Premium', 'Pro'].map(p => (
-                            <PlanCard key={p} plan={p} t={t} currentPlan={subscription ? subscription.planName : ''} onSelectPlan={setPayPlan} />
+                            <PlanCard 
+                                key={p} plan={p} t={t} currentPlan={subscription ? subscription.planName : ''} 
+                                onSelectPlan={(selected) => {
+                                    if (selected === 'Free_Direct') {
+                                        upgradePlan('Free');
+                                    } else {
+                                        setPayPlan(selected);
+                                    }
+                                }} 
+                            />
                         ))}
                     </div>
                 </section>

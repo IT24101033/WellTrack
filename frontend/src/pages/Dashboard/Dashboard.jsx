@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import { fetchHealthEntries, createHealthEntry, updateHealthEntry } from '../../services/healthService';
+import { getAnalyticsSummary } from '../../services/reportService';
 import axios from 'axios';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -139,10 +140,10 @@ function EmptyState() {
 export default function Dashboard() {
     const { user } = useAuth();
     const [entries, setEntries] = useState([]);
+    const [hrSummary, setHrSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     
-    // Sync state for the creative modal
-    const [syncState, setSyncState] = useState({ active: false, progress: 0, status: '', done: false });
+    // Sync state removed (handled in dedicated Watch Sync page)
     const [toastMsg, setToastMsg] = useState(null);
 
     const showToast = (msg) => {
@@ -154,183 +155,31 @@ export default function Dashboard() {
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
     useEffect(() => {
-        // Google Fit OAuth URL parsed token
-        const hash = window.location.hash;
-        if (hash && hash.includes('access_token=')) {
-            const params = new URLSearchParams(hash.substring(1));
-            const token = params.get('access_token');
-            const expiresIn = params.get('expires_in');
-            if (token) {
-                // Save token to prevent forcing the user to log in every single time (1-click sync)
-                localStorage.setItem('googleFitToken', token);
-                if (expiresIn) {
-                    localStorage.setItem('googleFitTokenExpiry', Date.now() + (parseInt(expiresIn) * 1000));
-                }
-                window.history.replaceState(null, '', window.location.pathname);
-                handleGoogleFitSync(token);
-            }
-        }
+        // OAuth callback is now handled in /watch-sync page.
+        // We just load the dashboard entries here.
 
         const load = async () => {
             try {
-                const res = await fetchHealthEntries({ limit: 7 });
-                if (res.data?.success) {
-                    setEntries([...res.data.entries].sort((a, b) => a.date.localeCompare(b.date)));
+                const [healthRes, hrRes] = await Promise.all([
+                    fetchHealthEntries({ limit: 7 }),
+                    getAnalyticsSummary()
+                ]).catch(() => [null, null]);
+
+                if (healthRes?.data?.success) {
+                    setEntries([...healthRes.data.entries].sort((a, b) => a.date.localeCompare(b.date)));
+                }
+                
+                if (hrRes?.data?.success && hrRes.data.data) {
+                    setHrSummary(hrRes.data.data);
                 }
             } catch { /* silent */ }
-            if (!hash || !hash.includes('access_token=')) setLoading(false);
+            setLoading(false);
         };
         load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const initiateGoogleFitSync = () => {
-        const savedToken = localStorage.getItem('googleFitToken');
-        const expiry = localStorage.getItem('googleFitTokenExpiry');
-        
-        // If we have a valid unexpired token cached, skip the login screen instantly!
-        if (savedToken && expiry && Date.now() < parseInt(expiry)) {
-            handleGoogleFitSync(savedToken);
-            return;
-        }
-
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '109045488714-rvtej3ipovdar1mvm6uka4ih1n09dokm.apps.googleusercontent.com';
-        const redirectUri = window.location.origin + window.location.pathname;
-        const scopes = [
-            'https://www.googleapis.com/auth/fitness.activity.read',
-            'https://www.googleapis.com/auth/fitness.sleep.read',
-            'https://www.googleapis.com/auth/fitness.heart_rate.read'
-        ];
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scopes.join(' '))}`;
-        window.location.href = authUrl;
-    };
-
-    const handleGoogleFitSync = async (token) => {
-        setSyncState({ active: true, progress: 5, status: 'Connecting to Google Fit...', done: false });
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            // Fetch last 7 days
-            const daysToSync = 7;
-            const startTimeMillis = new Date(today.getTime() - (86400000 * (daysToSync - 1))).getTime();
-            const endTimeMillis = new Date().getTime();
-
-            setSyncState({ active: true, progress: 20, status: 'Fetching historical Steps & Heart Rate...', done: false });
-
-            // 1. Fetch Steps & Heart Rate aggregated by day
-            const aggRes = await axios.post('https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate', {
-                aggregateBy: [
-                    { dataTypeName: 'com.google.step_count.delta', dataSourceId: 'derived:com.google.step_count.delta:com.google.android.gms:estimated_steps' },
-                    { dataTypeName: 'com.google.heart_rate.bpm' }
-                ],
-                bucketByTime: { durationMillis: 86400000 },
-                startTimeMillis,
-                endTimeMillis
-            }, { headers: { Authorization: `Bearer ${token}` } });
-
-            setSyncState({ active: true, progress: 40, status: 'Fetching Sleep patterns...', done: false });
-
-            // 2. Fetch Sleep (Sessions) for the last 7 days
-            const sleepRes = await axios.get(`https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${new Date(startTimeMillis).toISOString()}&endTime=${new Date(endTimeMillis).toISOString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            setSyncState({ active: true, progress: 60, status: 'Analyzing multi-day health data...', done: false });
-
-            // Process data day by day
-            const existingEntriesRes = await fetchHealthEntries({ limit: 14 }); // Fetch recent to check existence
-            const existingEntries = existingEntriesRes.data?.entries || [];
-
-            const buckets = aggRes.data.bucket || [];
-            let totalStepsSynced = 0;
-            let totalSleepSynced = 0;
-
-            for (let i = 0; i < buckets.length; i++) {
-                const bucket = buckets[i];
-                const bucketStart = parseInt(bucket.startTimeMillis);
-                const bucketDateStr = new Date(bucketStart).toISOString().slice(0, 10);
-
-                // Parse Steps
-                let steps = 0;
-                const stepPoints = bucket.dataset.find(d => d.dataSourceId.includes('step_count'))?.point;
-                if (stepPoints && stepPoints.length > 0) {
-                    steps = stepPoints[0].value?.[0]?.intVal || Math.round(stepPoints[0].value?.[0]?.mapVal?.[0]?.value?.fpVal || 0) || 0;
-                }
-
-                // Parse Heart Rate
-                let avgHr = 0;
-                const hrPoints = bucket.dataset.find(d => d.dataSourceId.includes('heart_rate'))?.point;
-                if (hrPoints && hrPoints.length > 0) {
-                    avgHr = Math.round(hrPoints[0].value?.[0]?.fpVal || 0);
-                }
-
-                // Parse Sleep for this specific day
-                let sleepHours = 0;
-                if (sleepRes.data.session) {
-                    const sleepStageTypes = [72, 109, 110, 111]; 
-                    const daySleep = sleepRes.data.session.filter(s => {
-                        const sEnd = parseInt(s.endTimeMillis);
-                        return sEnd >= bucketStart && sEnd < (bucketStart + 86400000) && sleepStageTypes.includes(s.activityType);
-                    });
-                    const totalMillis = daySleep.reduce((acc, s) => acc + (parseInt(s.endTimeMillis) - parseInt(s.startTimeMillis)), 0);
-                    sleepHours = parseFloat((totalMillis / (1000 * 60 * 60)).toFixed(1));
-                }
-
-                // A+ Presentation Fallback: Fill 0s with realistic data so charts look amazing
-                if (steps === 0) steps = Math.floor(Math.random() * (14000 - 3000 + 1)) + 3000;
-                if (sleepHours === 0) sleepHours = parseFloat((Math.random() * (9.0 - 5.5 + 1) + 5.5).toFixed(1));
-                if (avgHr === 0) avgHr = Math.floor(Math.random() * (85 - 60 + 1)) + 60;
-
-                totalStepsSynced += steps;
-                totalSleepSynced += sleepHours;
-
-                // Sync to DB
-                const payload = {
-                    date: bucketDateStr,
-                    physiological: { sleepHours, restingHeartRate: avgHr },
-                    activity: { stepsPerDay: steps },
-                };
-
-                const ext = existingEntries.find(e => e.date === bucketDateStr);
-                if (ext) {
-                    await updateHealthEntry(ext._id, payload);
-                } else {
-                    await createHealthEntry(payload);
-                }
-
-                // Update progress smoothly
-                const itemProgress = 60 + Math.round(((i + 1) / buckets.length) * 35);
-                setSyncState(s => ({ ...s, progress: itemProgress, status: `Saving data for ${bucketDateStr}...` }));
-            }
-
-            setSyncState({ active: true, progress: 100, status: 'Sync Complete! Refreshing Dashboard...', done: true });
-
-            // Refresh UI
-            const resList = await fetchHealthEntries({ limit: 7 });
-            if (resList.data?.success) {
-                setEntries([...resList.data.entries].sort((a, b) => a.date.localeCompare(b.date)));
-            }
-
-            setTimeout(() => {
-                setSyncState({ active: false, progress: 0, status: '', done: false });
-                showToast(`✅ Synced 7 days of history! (${totalStepsSynced.toLocaleString()} total steps)`);
-            }, 2000);
-
-        } catch (err) {
-            console.error('Fit Sync Error:', err);
-            setSyncState({ active: false, progress: 0, status: '', done: false });
-            
-            if (err.response?.status === 401) {
-                // Token secretly expired or was revoked by Google
-                localStorage.removeItem('googleFitToken');
-                localStorage.removeItem('googleFitTokenExpiry');
-                showToast('❌ Security Session expired. Please click Sync again to safely reconnect.');
-            } else {
-                showToast('❌ Sync failed. Make sure your watch is synced to Google Fit on your phone.');
-            }
-        }
-    };
+    // initiateGoogleFitSync and handleGoogleFitSync removed (logic moved to GoogleFitSync.jsx)
 
     if (loading) {
         return (
@@ -399,16 +248,16 @@ export default function Dashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={initiateGoogleFitSync}
-                        disabled={syncState.active}
-                        className="glass-btn flex items-center gap-2 px-4 py-2 text-sm transition-all shadow-md hover:-translate-y-0.5"
-                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none' }}
-                        title="Sync multi-day history from Galaxy Watch"
-                    >
-                        <Smartphone className="w-4 h-4" />
-                        <span className="hidden sm:inline">Sync Watch History</span>
-                    </button>
+                    <Link to="/watch-sync">
+                        <button
+                            className="glass-btn flex items-center gap-2 px-4 py-2 text-sm transition-all shadow-md hover:-translate-y-0.5"
+                            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none' }}
+                            title="Go to dedicated Watch Sync page"
+                        >
+                            <Smartphone className="w-4 h-4" />
+                            <span className="hidden sm:inline">Watch Sync</span>
+                        </button>
+                    </Link>
                     <Link to="/health-input">
                         <button className="glass-btn flex items-center gap-2 px-4 py-2 text-sm">
                             <Plus className="w-4 h-4" /> Add New Data
@@ -417,31 +266,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Creative Sync Modal overlays the screen when active */}
-            {syncState.active && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)' }}>
-                    <div className="glass-card max-w-sm w-full p-8 flex flex-col items-center text-center animate-scale-in" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
-                        <div className="relative mb-6">
-                            <div className="w-20 h-20 rounded-full flex items-center justify-center relative z-10" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }}>
-                                {syncState.done ? <CheckCircle className="w-10 h-10 animate-scale-in" /> : <Smartphone className="w-10 h-10 animate-pulse" />}
-                            </div>
-                            {!syncState.done && <div className="absolute inset-0 rounded-full border-4 border-[#10b981] animate-ping opacity-20" />}
-                        </div>
-                        
-                        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-                            {syncState.done ? 'Sync Complete!' : 'Connecting Watch...'}
-                        </h2>
-                        <p className="text-sm font-medium h-5 mb-8" style={{ color: 'var(--text-secondary)' }}>
-                            {syncState.status}
-                        </p>
-
-                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(148,163,184,0.1)' }}>
-                            <div className="h-full rounded-full transition-all duration-300 ease-out" style={{ width: `${syncState.progress}%`, background: 'linear-gradient(90deg, #3b82f6, #10b981)' }} />
-                        </div>
-                        <p className="text-xs font-bold mt-3" style={{ color: 'var(--text-muted)' }}>{syncState.progress}%</p>
-                    </div>
-                </div>
-            )}
+            {/* Sync Modal removed - now handled on /watch-sync page */}
 
             {/* Global toast */}
             {toastMsg && (
@@ -462,6 +287,35 @@ export default function Dashboard() {
                             Your latest entry shows high stress (stress {'>'} 8) combined with low sleep ({'<'} 5h).
                             Please prioritize rest and consider speaking to a wellness advisor.
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Imported HR Analytics */}
+            {hrSummary && (
+                <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '100ms' }}>
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                            <Heart className="w-4 h-4" style={{ color: '#ef4444' }} />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>Imported Heart Rate Analytics</h2>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>From your latest {hrSummary.total_records} PDF records</p>
+                        </div>
+                    </div>
+                    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                        {[
+                            { label: 'Avg Heart Rate', value: hrSummary.avg_hr ? `${hrSummary.avg_hr} bpm` : '—', color: '#ef4444' },
+                            { label: 'Min Heart Rate', value: hrSummary.min_hr ? `${hrSummary.min_hr} bpm` : '—', color: '#10b981' },
+                            { label: 'Max Heart Rate', value: hrSummary.max_hr ? `${hrSummary.max_hr} bpm` : '—', color: '#f59e0b' },
+                            { label: 'Exercise Sessions', value: hrSummary.exercise_sessions ?? 0, color: '#3b82f6' }
+                        ].map(s => (
+                            <div key={s.label} className="glass-sm p-4 text-center">
+                                <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                                <p className="text-xs font-semibold mt-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

@@ -9,6 +9,10 @@ import {
     Loader2,
     AlertCircle,
     RefreshCw,
+    Sparkles,
+    Play,
+    Youtube,
+    Zap,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -40,6 +44,301 @@ const EMPTY_FORM = {
     time: "",
     duration: "",
 };
+
+// ── AI Insights Section ───────────────────────────────────────────────────────
+
+const ADVICE_CATEGORIES = [
+    {
+        key: "diet",
+        label: "Diet & Nutrition",
+        icon: "🥗",
+        iconComponent: Utensils,
+        color: "#10b981",
+        bg: "rgba(16,185,129,0.08)",
+        border: "rgba(16,185,129,0.2)",
+    },
+    {
+        key: "workout",
+        label: "Workout Plan",
+        icon: "💪",
+        iconComponent: Dumbbell,
+        color: "#f97316",
+        bg: "rgba(249,115,22,0.08)",
+        border: "rgba(249,115,22,0.2)",
+    },
+    {
+        key: "mental",
+        label: "Mental Wellness",
+        icon: "🧠",
+        iconComponent: Brain,
+        color: "#8b5cf6",
+        bg: "rgba(139,92,246,0.08)",
+        border: "rgba(139,92,246,0.2)",
+    },
+];
+
+function AIHealthInsights({ onAddAiPlan }) {
+    const [aiData, setAiData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    const fetchAdvice = async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const { data } = await api.post("/ai/health-advice");
+            setAiData(data.data);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to generate AI advice. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div
+            style={{
+                background: "linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(59,130,246,0.06) 100%)",
+                border: "1px solid rgba(139,92,246,0.18)",
+                borderRadius: "20px",
+                padding: "24px",
+                marginBottom: "8px",
+            }}
+        >
+            {/* Header Row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{
+                        width: "44px", height: "44px", borderRadius: "14px",
+                        background: "linear-gradient(135deg,#8b5cf6,#3b82f6)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: "0 4px 14px rgba(139,92,246,0.35)",
+                    }}>
+                        <Sparkles style={{ color: "white", width: "22px", height: "22px" }} />
+                    </div>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>
+                            🤖 AI Health Insights
+                        </h2>
+                        <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted, #64748b)", marginTop: "2px" }}>
+                            Powered by Google Gemini · Analyzes your real health data
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={fetchAdvice}
+                    disabled={loading}
+                    style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        padding: "10px 18px", borderRadius: "12px",
+                        background: loading ? "rgba(139,92,246,0.15)" : "linear-gradient(135deg,#8b5cf6,#6d28d9)",
+                        color: loading ? "#8b5cf6" : "white",
+                        border: "none", cursor: loading ? "not-allowed" : "pointer",
+                        fontSize: "13px", fontWeight: 600,
+                        boxShadow: loading ? "none" : "0 4px 14px rgba(139,92,246,0.35)",
+                        transition: "all 0.2s",
+                    }}
+                >
+                    {loading ? (
+                        <><Loader2 style={{ width: "15px", height: "15px", animation: "spin 1s linear infinite" }} /> Generating…</>
+                    ) : (
+                        <><Sparkles style={{ width: "15px", height: "15px" }} /> Get AI Advice</>
+                    )}
+                </button>
+            </div>
+
+            {/* Error */}
+            {error && (
+                <div style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    padding: "10px 14px", borderRadius: "10px", marginBottom: "16px",
+                    background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444",
+                    fontSize: "13px",
+                }}>
+                    <AlertCircle style={{ width: "15px", height: "15px", flexShrink: 0 }} />
+                    {error}
+                </div>
+            )}
+
+            {/* Loading skeleton */}
+            {loading && !aiData && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
+                    {ADVICE_CATEGORIES.map(cat => (
+                        <div key={cat.key} style={{
+                            background: cat.bg, border: `1px solid ${cat.border}`,
+                            borderRadius: "14px", padding: "18px",
+                        }}>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
+                                <div style={{ width: "32px", height: "32px", borderRadius: "9px", background: `${cat.color}22`, animation: "pulse 1.5s ease infinite" }} />
+                                <div style={{ height: "14px", width: "100px", background: `${cat.color}22`, borderRadius: "6px", animation: "pulse 1.5s ease infinite" }} />
+                            </div>
+                            <div style={{ height: "12px", width: "90%", background: `${cat.color}15`, borderRadius: "6px", marginBottom: "6px", animation: "pulse 1.5s ease infinite" }} />
+                            <div style={{ height: "12px", width: "75%", background: `${cat.color}15`, borderRadius: "6px", animation: "pulse 1.5s ease infinite" }} />
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Advice Cards */}
+            {aiData && !loading && (
+                <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px", marginBottom: "24px" }}>
+                        {ADVICE_CATEGORIES.map(cat => (
+                            <div key={cat.key} style={{
+                                background: cat.bg,
+                                border: `1px solid ${cat.border}`,
+                                borderRadius: "14px", padding: "18px",
+                                transition: "transform 0.2s",
+                            }}
+                                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                            >
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                                    <div style={{
+                                        width: "32px", height: "32px", borderRadius: "9px",
+                                        background: `${cat.color}22`, display: "flex", alignItems: "center", justifyContent: "center",
+                                        fontSize: "16px",
+                                    }}>
+                                        {cat.icon}
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <Zap style={{ width: "11px", height: "11px", color: cat.color }} />
+                                        <span style={{ fontSize: "12px", fontWeight: 700, color: cat.color }}>{cat.label}</span>
+                                    </div>
+                                </div>
+                                <p style={{ margin: 0, fontSize: "13px", lineHeight: "1.6", color: "var(--text-secondary, #374151)" }}>
+                                    {aiData.advice?.[cat.key] || "No advice available."}
+                                </p>
+                                
+                                {/* Render generated plans if available */}
+                                {aiData.advice?.[`${cat.key}_plans`] && aiData.advice[`${cat.key}_plans`].length > 0 && (
+                                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {aiData.advice[`${cat.key}_plans`].map((plan, idx) => (
+                                            <div key={idx} style={{ 
+                                                padding: '10px', background: 'rgba(255,255,255,0.6)', 
+                                                borderRadius: '10px', border: `1px solid ${cat.border}`,
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                                            }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                                                    <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: 'var(--text-primary, #1e293b)' }}>{plan.title}</h4>
+                                                    <span style={{ fontSize: '10px', background: cat.color, color: 'white', padding: '3px 6px', borderRadius: '4px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                                        {plan.recommended_time || (cat.key === 'diet' ? 'Meal' : 'Activity')}
+                                                    </span>
+                                                </div>
+                                                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--text-muted, #64748b)', lineHeight: '1.4' }}>{plan.description}</p>
+                                                <button 
+                                                    onClick={() => onAddAiPlan && onAddAiPlan(plan, cat.key)}
+                                                    style={{ 
+                                                        width: '100%', fontSize: '12px', background: 'white', 
+                                                        color: cat.color, border: `1px solid ${cat.color}40`, 
+                                                        padding: '6px 0', borderRadius: '8px', cursor: 'pointer', 
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                                        gap: '6px', fontWeight: 600, transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = cat.color; e.currentTarget.style.color = 'white'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = cat.color; }}
+                                                >
+                                                    <CalendarPlus size={14} /> Add to Schedule
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* YouTube Videos */}
+                    {aiData.videos && aiData.videos.length > 0 && (
+                        <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+                                <Youtube style={{ width: "18px", height: "18px", color: "#ef4444" }} />
+                                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>
+                                    ▶ Recommended YouTube Videos based on your data
+                                </span>
+                            </div>
+                            <div style={{ display: "flex", gap: "12px", overflowX: "auto", paddingBottom: "8px" }}>
+                                {aiData.videos.map((video, idx) => (
+                                    <a
+                                        key={idx}
+                                        href={video.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ textDecoration: "none", flexShrink: 0, width: "180px" }}
+                                    >
+                                        <div style={{
+                                            borderRadius: "12px", overflow: "hidden",
+                                            border: "1px solid rgba(0,0,0,0.08)",
+                                            background: "#fff",
+                                            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                                            transition: "transform 0.2s, box-shadow 0.2s",
+                                        }}
+                                            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.12)"; }}
+                                            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"; }}
+                                        >
+                                            {/* Thumbnail */}
+                                            <div style={{ position: "relative", width: "180px", height: "101px", background: "#f1f5f9" }}>
+                                                {video.thumbnail ? (
+                                                    <img src={video.thumbnail} alt={video.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                ) : (
+                                                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#e2e8f0" }}>
+                                                        <Youtube style={{ width: "32px", height: "32px", color: "#ef4444" }} />
+                                                    </div>
+                                                )}
+                                                {/* Play button overlay */}
+                                                <div style={{
+                                                    position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                                                    background: "rgba(0,0,0,0.15)",
+                                                }}>
+                                                    <div style={{
+                                                        width: "36px", height: "36px", borderRadius: "50%",
+                                                        background: "rgba(239,68,68,0.92)", display: "flex", alignItems: "center", justifyContent: "center",
+                                                        boxShadow: "0 2px 8px rgba(239,68,68,0.4)",
+                                                    }}>
+                                                        <Play style={{ width: "14px", height: "14px", color: "white", marginLeft: "2px" }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Info */}
+                                            <div style={{ padding: "10px" }}>
+                                                <p style={{
+                                                    margin: 0, fontSize: "11px", fontWeight: 600, lineHeight: "1.4",
+                                                    color: "#1e293b",
+                                                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                                                }}>
+                                                    {video.title}
+                                                </p>
+                                                <p style={{ margin: "4px 0 0", fontSize: "10px", color: "#94a3b8" }}>
+                                                    {video.channelTitle}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* No YouTube key fallback */}
+                    {aiData.videos && aiData.videos.length === 0 && (
+                        <div style={{
+                            padding: "14px", borderRadius: "12px",
+                            background: "rgba(255,255,255,0.5)", border: "1px solid rgba(0,0,0,0.06)",
+                            textAlign: "center", fontSize: "12px", color: "#94a3b8",
+                        }}>
+                            <Youtube style={{ width: "20px", height: "20px", margin: "0 auto 6px", color: "#ef4444" }} />
+                            <p style={{ margin: 0 }}>Add a YouTube API key in the .env to see video recommendations.</p>
+                            <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer"
+                                style={{ color: "#3b82f6", fontSize: "11px" }}>
+                                Get a free key at console.cloud.google.com
+                            </a>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -89,6 +388,27 @@ export default function Tips() {
 
     // ── CRUD handlers ───────────────────────────────────────────────────────────
 
+    const handleAddAiPlanToSchedule = async (plan, categoryStr) => {
+        try {
+            const payload = {
+                title: plan.title,
+                description: plan.description,
+                category: categoryStr.toUpperCase(),
+                time: plan.recommended_time || "",
+                duration: plan.duration || "",
+                status: "approved",
+                target_type: plan.target_type || "GENERAL",
+                difficulty_level: plan.difficulty_level || "EASY"
+            };
+            await api.post("/wellness", payload);
+            fetchTips();
+            setSuccessMsg(`Added "${plan.title}" to schedule!`);
+        } catch (err) {
+            console.error("Failed to schedule plan", err);
+            setError("Failed to add plan to schedule.");
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formState.title.trim() || !formState.description.trim()) return;
@@ -131,7 +451,6 @@ export default function Tips() {
 
     const handleEdit = (item) => {
         setFormState(item);
-        // Scroll to form
         document
             .getElementById("wellness-form")
             ?.scrollIntoView({ behavior: "smooth" });
@@ -162,7 +481,7 @@ export default function Tips() {
     // ── Render ──────────────────────────────────────────────────────────────────
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-8">
 
             {/* HEADER */}
             <div className="text-center">
@@ -186,6 +505,9 @@ export default function Tips() {
                     ✅ {successMsg}
                 </div>
             )}
+
+            {/* AI HEALTH INSIGHTS */}
+            <AIHealthInsights onAddAiPlan={handleAddAiPlanToSchedule} />
 
             {/* CATEGORY CARDS */}
             <div className="grid md:grid-cols-3 gap-6">

@@ -8,3 +8,6 @@ export const getUserDashboard = (userId) =>
 
 export const createReport = (data) =>
     api.post('/reports', data);
+
+export const getAnalyticsSummary = () =>
+    api.get('/reports/analytics-summary');

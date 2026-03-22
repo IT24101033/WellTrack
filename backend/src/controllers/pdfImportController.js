@@ -42,7 +42,8 @@ const extractTextWithOCR = async (pdfBuffer, filename) => {
     const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
 
     formData.append('file', blob, filename || 'upload.pdf');
-    formData.append('apikey', process.env.OCR_API_KEY);
+    // Using user-provided OCR API key for reliable extraction
+    formData.append('apikey', 'K85355575688957'); 
     formData.append('language', 'eng');
     formData.append('isTable', 'true');   // better column preservation
     formData.append('OCREngine', '2');      // engine 2 is more accurate for documents
@@ -291,10 +292,6 @@ const importHealthPdf = async (req, res) => {
         }
 
         // ── 2. Extract text via OCR.space ──────────────────────────────────
-        if (!process.env.OCR_API_KEY) {
-            return fail(res, 'Server is not configured with an OCR API key.', 500);
-        }
-
         let rawText;
         try {
             rawText = await extractTextWithOCR(buffer, originalname);
@@ -403,4 +400,22 @@ const importHealthPdf = async (req, res) => {
     }
 };
 
-module.exports = { importHealthPdf };
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/reports/analytics-summary
+// ─────────────────────────────────────────────────────────────────────────────
+const getAnalyticsSummary = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const summary = await AnalyticsSummary.findOne({ user_id: userId }).lean();
+        
+        if (!summary) {
+            return res.status(200).json({ success: true, data: null });
+        }
+        return res.status(200).json({ success: true, data: summary });
+    } catch (err) {
+        console.error('[getAnalyticsSummary]', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch analytics summary.' });
+    }
+};
+
+module.exports = { importHealthPdf, getAnalyticsSummary };

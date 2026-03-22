@@ -9,6 +9,7 @@ import Prediction from './pages/Prediction/Prediction';
 import Reports from './pages/Reports/Reports';
 import Notifications from './pages/Notifications/Notifications';
 import HealthTipsDashboard from './pages/Tips/HealthTipsDashboard';
+import GoogleFitSync from './pages/GoogleFitSync/GoogleFitSync';
 import Schedule from './pages/Schedule/Schedule';
 import Profile from './pages/Profile/Profile';
 import AdminUsers from './pages/Admin/AdminUsers';
@@ -35,6 +36,7 @@ function App() {
                 <Route path="reports" element={<Reports />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="tips" element={<HealthTipsDashboard />} />
+                <Route path="watch-sync" element={<GoogleFitSync />} />
                 <Route path="schedule" element={<Schedule />} />
                 <Route path="profile" element={<Profile />} />
 

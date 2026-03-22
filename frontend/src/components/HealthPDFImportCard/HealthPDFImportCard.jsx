@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Upload, FileText, X, CheckCircle, AlertCircle,
     Heart, Activity, TrendingUp, Zap, Calendar, RefreshCw, Eye,
@@ -70,6 +70,22 @@ function Toast({ message, type = 'success', onClose }) {
  */
 export default function HealthPDFImportCard({ onSuccess }) {
     const { token } = useAuth();
+    const [subscriptionPlan, setSubscriptionPlan] = useState('Free');
+
+    useEffect(() => {
+        const loadSub = async () => {
+            try {
+                const r = await fetch(`${API_BASE}/subscription`, {
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                });
+                const d = await r.json();
+                if (d.success && d.subscription) {
+                    setSubscriptionPlan(d.subscription.planName);
+                }
+            } catch (e) { /* silent */ }
+        };
+        loadSub();
+    }, [token]);
 
     // ── State ──────────────────────────────────────────────────────────────
     const [phase, setPhase] = useState('idle');    // idle | uploading | success | error
@@ -135,6 +151,18 @@ export default function HealthPDFImportCard({ onSuccess }) {
     // ── Upload handler ─────────────────────────────────────────────────────
     const handleUpload = async () => {
         if (!file) return;
+        if (subscriptionPlan === 'Free') {
+            setInlineError(
+                <span>
+                    PDF Report Import requires a Premium or Pro subscription.{' '}
+                    <a href="/notifications" style={{ textDecoration: 'underline', color: 'inherit', fontWeight: 'bold' }}>
+                        Upgrade here
+                    </a>
+                </span>
+            );
+            return;
+        }
+
         setPhase('uploading');
         setInlineError('');
         startFakeProgress();

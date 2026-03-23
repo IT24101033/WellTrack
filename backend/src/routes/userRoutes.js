@@ -12,6 +12,7 @@ const { authenticate, authorizeAdmin } = require('../middlewares/authMiddleware'
 const upload = require('../middlewares/uploadMiddleware');
 const {
     registerUser,
+    sendAdminPin,
     loginUser,
     getProfile,
     updateProfile,
@@ -26,6 +27,7 @@ const {
 
 // ── Public Routes ──────────────────────────────────────────────────────────────
 router.post('/register', registerUser);  // POST   /api/users/register
+router.post('/send-pin', sendAdminPin);  // POST   /api/users/send-pin
 router.post('/login', loginUser);        // POST   /api/users/login
 
 // ── Protected: Own Profile ─────────────────────────────────────────────────────

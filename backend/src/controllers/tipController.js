@@ -1,7 +1,24 @@
 'use strict';
 
 const LifestyleTip = require('../models/lifestyleTipModel');
+const User = require('../models/User');
+const { sendAppAlert } = require('../utils/notificationService');
 const axios = require('axios');
+
+/**
+ * Helper function to silently broadcast an alert to all active students.
+ */
+const notifyAllStudents = async (title, message) => {
+    try {
+        const students = await User.find({ role: 'student', isActive: true }).select('_id');
+        for (const student of students) {
+            // Unawaited intentionally to prevent blocking the response
+            sendAppAlert(student._id.toString(), title, message, 'wellness').catch(e => console.error(e));
+        }
+    } catch (err) {
+        console.error("Error notifying students:", err);
+    }
+};
 
 // POST /api/tips
 const createTip = async (req, res, next) => {
@@ -17,6 +34,9 @@ const createTip = async (req, res, next) => {
             target_type: target_type || 'GENERAL',
             created_by: req.user.id
         });
+
+        // Broadcast to all students
+        notifyAllStudents("New Health Tip Added! 🌱", `A new ${category.toLowerCase()} tip has been added: "${title}". Check your dashboard!`);
 
         res.status(201).json({ success: true, data: newTip });
     } catch (error) {
@@ -183,6 +203,10 @@ const importDietTips = async (req, res, next) => {
             }
         }
 
+        if (importedCount > 0) {
+            notifyAllStudents("New Diet Recipes Available! 🥗", `${importedCount} delicious new healthy recipes have been imported. Head over to the health tips section!`);
+        }
+
         res.status(200).json({ success: true, message: `Successfully imported ${importedCount} diet tips`, importedCount });
     } catch (error) {
         console.error("Error importing diet tips:", error.message);
@@ -221,6 +245,10 @@ const importWorkoutTips = async (req, res, next) => {
             }
         }
 
+        if (importedCount > 0) {
+            notifyAllStudents("New Workout Routines Added! 🏋️‍♂️", `${importedCount} brand new exercises have just been imported to help you stay fit!`);
+        }
+
         res.status(200).json({ success: true, message: `Successfully imported ${importedCount} workout tips`, importedCount });
     } catch (error) {
         console.error("Error importing workout tips:", error.message);
@@ -252,6 +280,10 @@ const importMentalTips = async (req, res, next) => {
                 });
                 importedCount++;
             }
+        }
+
+        if (importedCount > 0) {
+            notifyAllStudents("New Mental Wellness Quotes! 🧘‍♀️", `${importedCount} inspirational quotes have been added to help you relieve stress and focus.`);
         }
 
         res.status(200).json({ success: true, message: `Successfully imported ${importedCount} mental tips`, importedCount });

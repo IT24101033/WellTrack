@@ -7,4 +7,6 @@ import api from './api';
 
 export const register = (data) => api.post('/users/register', data);
 
+export const sendAdminPin = (data) => api.post('/users/send-pin', data);
+
 export const login = (data) => api.post('/users/login', data);

@@ -52,6 +52,10 @@ const createEntry = async (req, res) => {
         if (err.code === 11000) {
             return fail(res, 'A health record already exists for this date. Use PUT to update it.', 409);
         }
+        if (err.name === 'ValidationError') {
+            const msg = Object.values(err.errors).map(e => e.message).join(', ');
+            return fail(res, msg, 400);
+        }
         console.error('[createEntry]', err);
         return fail(res, 'Failed to create health entry.', 500);
     }
@@ -194,6 +198,10 @@ const updateEntry = async (req, res) => {
         return ok(res, { entry: updated });
     } catch (err) {
         if (err.code === 11000) return fail(res, 'Duplicate date entry.', 409);
+        if (err.name === 'ValidationError') {
+            const msg = Object.values(err.errors).map(e => e.message).join(', ');
+            return fail(res, msg, 400);
+        }
         console.error('[updateEntry]', err);
         return fail(res, 'Failed to update entry.', 500);
     }

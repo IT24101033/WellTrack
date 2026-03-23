@@ -92,7 +92,17 @@ const userSchema = new mongoose.Schema(
         // ── Notification preferences ─────────────────────────────────────────────
         emailEnabled: { type: Boolean, default: true },
         smsEnabled: { type: Boolean, default: false },
-        phoneNumber: { type: String, default: '' },
+        phoneNumber: { 
+            type: String, 
+            default: '',
+            validate: {
+                validator: function(v) {
+                    // Allow empty string, or generic international/national format: +[digits] or 0[digits], 7-15 chars
+                    return v === '' || /^\+?[0-9]{7,15}$/.test(v);
+                },
+                message: 'Please enter a valid phone number (e.g., +1234567890).'
+            }
+        },
 
         // ── Activity log ───────────────────────────────────────────────────────
         activityLog: {

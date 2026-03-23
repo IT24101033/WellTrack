@@ -72,7 +72,7 @@ export default function Login() {
                                     <input
                                         name="email" type="email" value={form.email}
                                         onChange={handleChange} placeholder="you@example.com"
-                                        autoComplete="email"
+                                        autoComplete="email" required
                                         className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                     />
                                 </div>
@@ -86,7 +86,7 @@ export default function Login() {
                                     <input
                                         name="password" type={showPw ? 'text' : 'password'}
                                         value={form.password} onChange={handleChange}
-                                        placeholder="••••••••" autoComplete="current-password"
+                                        placeholder="••••••••" autoComplete="current-password" required
                                         className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                     />
                                     <button type="button" onClick={() => setShowPw(!showPw)}

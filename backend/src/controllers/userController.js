@@ -6,7 +6,10 @@
  */
 
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Otp = require('../models/otpModel');
+const { sendEmail, sendSMS } = require('../utils/notificationService');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const signToken = (id, role) =>
@@ -36,9 +39,9 @@ const respondWithToken = (res, user, statusCode = 200) => {
  * POST /api/users/register
  * Body: { fullName, email, password, confirmPassword, role }
  */
-const registerUser = async (req, res) => {
+const registerUser = async (req, res, next) => {
     try {
-        const { fullName, email, password, confirmPassword, role } = req.body;
+        const { fullName, email, password, confirmPassword, role, adminPin, phoneNumber } = req.body;
 
         // Basic validation
         if (!fullName || !email || !password || !confirmPassword) {
@@ -56,7 +59,30 @@ const registerUser = async (req, res) => {
             return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
         }
 
-        const user = await User.create({ fullName, email, password, role: role || 'student' });
+        // Admin PIN Verification
+        if (role === 'admin') {
+            if (!adminPin) {
+                return res.status(400).json({ success: false, message: 'Admin Registration requires a 6-digit PIN.' });
+            }
+            const otpRecord = await Otp.findOne({ email: email.toLowerCase() });
+            if (!otpRecord) {
+                return res.status(400).json({ success: false, message: 'PIN expired or not requested.' });
+            }
+            const isMatch = await otpRecord.compareOtp(adminPin);
+            if (!isMatch) {
+                return res.status(400).json({ success: false, message: 'Invalid Admin PIN.' });
+            }
+            // Delete OTP after successful use
+            await Otp.deleteOne({ email: email.toLowerCase() });
+        }
+
+        const user = await User.create({ 
+            fullName, 
+            email, 
+            password, 
+            role: role || 'student',
+            phoneNumber: phoneNumber || '' 
+        });
         user.activityLog.push({ action: 'registered', details: 'Account created' });
         await user.save();
 
@@ -68,6 +94,51 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ success: false, message: msg });
         }
         res.status(500).json({ success: false, message: 'Server error during registration.' });
+    }
+};
+
+// ── 1.5 Send Admin PIN ────────────────────────────────────────────────────────
+/**
+ * POST /api/users/send-pin
+ * Body: { email, phoneNumber }
+ */
+const sendAdminPin = async (req, res, next) => {
+    try {
+        const { email, phoneNumber } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required to send PIN.' });
+        }
+        if (!phoneNumber) {
+            return res.status(400).json({ success: false, message: 'Phone Number is required to send Admin PIN.' });
+        }
+
+        // Check if an account with this email already exists
+        const exists = await User.findOne({ email: email.toLowerCase() });
+        if (exists) {
+            return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
+        }
+
+        // Generate 6 digit pin
+        const pin = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = await bcrypt.hash(pin, 10);
+        
+        // Delete any existing OTP for this email
+        await Otp.deleteMany({ email: email.toLowerCase() });
+        
+        await Otp.create({ email: email.toLowerCase(), otpHash });
+        
+        const message = `Your HealthPredict Admin Registration PIN is: ${pin}. It expires in 10 minutes.`;
+        
+        // Send email
+        await sendEmail(email, 'Admin Registration PIN', message);
+        
+        // Send SMS
+        await sendSMS(phoneNumber, message);
+        
+        res.status(200).json({ success: true, message: 'PIN sent to email and SMS.' });
+    } catch (err) {
+        console.error('[sendAdminPin]', err);
+        next(err);
     }
 };
 
@@ -363,6 +434,7 @@ const permanentDeleteUser = async (req, res) => {
 
 module.exports = {
     registerUser,
+    sendAdminPin,
     loginUser,
     getProfile,
     updateProfile,

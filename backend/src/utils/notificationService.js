@@ -2,6 +2,9 @@
 
 const nodemailer = require('nodemailer');
 const twilio = require('twilio');
+const Notification = require('../models/notificationModel');
+const User = require('../models/User');
+const Preference = require('../models/preferenceModel');
 
 /**
  * sendEmail
@@ -66,7 +69,43 @@ const sendSMS = async (to, body) => {
     }
 };
 
+/**
+ * sendAppAlert
+ * Creates an in-app notification and dispatches Email/SMS based on User Preferences.
+ *
+ * @param {string} userId
+ * @param {string} title
+ * @param {string} message
+ * @param {string} type ('system', 'wellness', 'appointment', 'medication')
+ */
+const sendAppAlert = async (userId, title, message, type = 'system') => {
+    try {
+        // 1. Create in-app Notification
+        await Notification.create({ userId, title, message, type, status: 'unread' });
+
+        // 2. Fetch User & Preference
+        const user = await User.findById(userId);
+        if (!user) return;
+
+        let pref = await Preference.findOne({ userId });
+        if (!pref) pref = { emailNotifications: true, smsAlerts: false }; // defaults
+
+        // 3. Send Email
+        if (pref.emailNotifications && user.email) {
+            await sendEmail(user.email, title, message);
+        }
+
+        // 4. Send SMS
+        if (pref.smsAlerts && user.phoneNumber) {
+            await sendSMS(user.phoneNumber, message);
+        }
+    } catch (err) {
+        console.error('[notificationService.sendAppAlert] Error:', err);
+    }
+};
+
 module.exports = {
     sendEmail,
-    sendSMS
+    sendSMS,
+    sendAppAlert
 };

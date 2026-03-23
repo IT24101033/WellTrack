@@ -7,18 +7,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const links = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Health Input', href: '/health-input', icon: PlusCircle },
-    { name: 'Risk Prediction', href: '/prediction', icon: Activity },
-    { name: 'Reports', href: '/reports', icon: FileText },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
-    { name: 'Tips & Advice', href: '/tips', icon: Lightbulb },
-    { name: 'Watch Sync', href: '/watch-sync', icon: Watch },
-    { name: 'Schedule', href: '/schedule', icon: Calendar },
-    { name: 'Profile', href: '/profile', icon: UserCircle },
-];
-
 export function Sidebar() {
     const location = useLocation();
     const pathname = location.pathname;
@@ -26,10 +14,27 @@ export function Sidebar() {
     const { user, isAdmin, logout } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
 
-    const allLinks = [
-        ...links,
-        ...(isAdmin ? [{ name: 'Users', href: '/admin/users', icon: ShieldCheck }] : []),
+    const studentLinks = [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Health Input', href: '/health-input', icon: PlusCircle },
+        { name: 'Risk Prediction', href: '/prediction', icon: Activity },
+        { name: 'Reports', href: '/reports', icon: FileText },
+        { name: 'Notifications', href: '/notifications', icon: Bell },
+        { name: 'Tips & Advice', href: '/tips', icon: Lightbulb },
+        { name: 'Watch Sync', href: '/watch-sync', icon: Watch },
+        { name: 'Schedule', href: '/schedule', icon: Calendar },
+        { name: 'Profile', href: '/profile', icon: UserCircle },
     ];
+
+    const adminLinks = [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Manage Users', href: '/admin/users', icon: ShieldCheck },
+        { name: 'Manage Tips', href: '/admin/tips', icon: Lightbulb },
+        { name: 'Broadcasts', href: '/admin/broadcasts', icon: Bell },
+        { name: 'Profile', href: '/profile', icon: UserCircle },
+    ];
+
+    const allLinks = isAdmin ? adminLinks : studentLinks;
 
     const handleLogout = () => {
         logout();

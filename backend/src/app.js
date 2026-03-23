@@ -18,6 +18,7 @@ const wellnessRoutes = require('./routes/wellnessRoutes');
 const tipRoutes = require('./routes/tipRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const googleFitRoutes = require('./routes/googleFitRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
@@ -82,6 +83,7 @@ app.use('/api/wellness', wellnessRoutes); // Food & Lifestyle Tips Management
 app.use('/api/tips', tipRoutes); // Lifestyle Tips 
 app.use('/api/ai', aiRoutes);
 app.use('/api/google-fit', googleFitRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) =>

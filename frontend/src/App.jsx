@@ -14,9 +14,14 @@ import Schedule from './pages/Schedule/Schedule';
 import Profile from './pages/Profile/Profile';
 import AdminUsers from './pages/Admin/AdminUsers';
 import AdminTipsManagement from './pages/Admin/AdminTipsManagement';
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import AdminBroadcasts from './pages/Admin/AdminBroadcasts';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 
 function App() {
+    const { isAdmin } = useAuth();
+
     return (
         <Routes>
             {/* Public Routes */}
@@ -30,7 +35,7 @@ function App() {
                     <Layout />
                 </ProtectedRoute>
             }>
-                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="dashboard" element={isAdmin ? <AdminDashboard /> : <Dashboard />} />
                 <Route path="health-input" element={<HealthInput />} />
                 <Route path="prediction" element={<Prediction />} />
                 <Route path="reports" element={<Reports />} />
@@ -49,6 +54,11 @@ function App() {
                 <Route path="admin/tips" element={
                     <ProtectedRoute adminOnly>
                         <AdminTipsManagement />
+                    </ProtectedRoute>
+                } />
+                <Route path="admin/broadcasts" element={
+                    <ProtectedRoute adminOnly>
+                        <AdminBroadcasts />
                     </ProtectedRoute>
                 } />
             </Route>

@@ -25,3 +25,7 @@ export const deleteNotification = (id) =>
 /** Clear all notifications for the current user */
 export const clearAllNotifications = () =>
     api.delete('/notifications/all');
+
+/** Test Email and SMS Feature */
+export const sendTestNotification = (data) =>
+    api.post('/notifications/test-feature', data);

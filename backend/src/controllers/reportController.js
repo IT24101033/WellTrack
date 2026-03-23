@@ -18,6 +18,7 @@ const {
     validateDateFilter,
     isValidObjectId,
 } = require('../utils/analyticsHelper');
+const { sendAppAlert } = require('../utils/notificationService');
 
 // ─── Response Helpers ─────────────────────────────────────────────────────────
 const ok = (res, data, message = 'Success', status = 200, meta = null) => {
@@ -123,6 +124,15 @@ const createReport = async (req, res) => {
         });
 
         await refreshDashboard(user_id);
+
+        // Send alert for report creation
+        await sendAppAlert(
+            user_id,
+            'Health Report Generated',
+            'Your new health report and AI prediction have been generated and are ready to view in your dashboard.',
+            'system'
+        );
+
         return ok(res, report, 'Report generated successfully.', 201);
     } catch (err) {
         console.error('[createReport]', err);

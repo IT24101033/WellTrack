@@ -11,6 +11,7 @@ import {
     markAllNotificationsRead,
     deleteNotification as deleteNotifApi,
     clearAllNotifications as clearAllNotifApi,
+    sendTestNotification,
 } from '../../services/notificationService';
 
 /* ─── constants ─────────────────────────────────────────────── */
@@ -369,6 +370,12 @@ export default function Notifications() {
     /* payment gateway */
     const [payPlan, setPayPlan] = useState(null); // null = closed, 'Premium'/'Pro' = open
 
+    /* test feature */
+    const [testEmail, setTestEmail] = useState('');
+    const [testPhone, setTestPhone] = useState('');
+    const [testLoading, setTestLoading] = useState(false);
+    const [testMsg, setTestMsg] = useState('');
+
     /* ── theme ── */
     const t = dark ? {
         bg: '#0F172A', card: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.10)',
@@ -471,6 +478,28 @@ export default function Notifications() {
         setTimeout(() => setPrefMsg(''), 2500);
     };
 
+    const handleTestFeature = async () => {
+        if (!testEmail && !testPhone) {
+            setTestMsg('Please provide at least an email or phone number.');
+            setTimeout(() => setTestMsg(''), 3000);
+            return;
+        }
+        setTestLoading(true);
+        setTestMsg('');
+        try {
+            const res = await sendTestNotification({ email: testEmail, phone: testPhone });
+            if (res.data.success) {
+                setTestMsg(res.data.message);
+            } else {
+                setTestMsg('Failed to process test.');
+            }
+        } catch (err) {
+            setTestMsg('Error: ' + (err.response?.data?.message || err.message));
+        }
+        setTestLoading(false);
+        setTimeout(() => setTestMsg(''), 5000);
+    };
+
     /* ── render ── */
     return (
         <div style={{ minHeight: '100vh', background: t.bg, color: t.text, fontFamily: 'Inter, -apple-system, sans-serif', transition: 'background .3s' }}>
@@ -554,6 +583,34 @@ export default function Notifications() {
                                 Reset
                             </button>
                             {prefMsg && <span style={{ fontSize: 12, color: prefMsg.includes('!') ? '#10B981' : '#EF4444' }}>{prefMsg}</span>}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Test Feature */}
+                <section style={{ marginBottom: 40 }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 14, color: t.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Bell size={18} /> Test Feature
+                    </h2>
+                    <div style={{ ...glass, padding: '22px' }}>
+                        <p style={{ margin: '0 0 16px', color: t.sub, fontSize: 13 }}>
+                            Use this section to test the Email (Nodemailer) and SMS (Twilio) configurations. Provide your email and phone number, then click Test Feature.
+                        </p>
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                                <label style={{ fontSize: 13, color: t.sub, marginBottom: 6, display: 'block' }}>Email Address</label>
+                                <input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="example@gmail.com" style={{ width: '100%', background: t.input, border: '1px solid ' + t.border, borderRadius: 10, padding: '10px 14px', color: t.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                                <label style={{ fontSize: 13, color: t.sub, marginBottom: 6, display: 'block' }}>Phone Number</label>
+                                <input value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="+1234567890" style={{ width: '100%', background: t.input, border: '1px solid ' + t.border, borderRadius: 10, padding: '10px 14px', color: t.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
+                        </div>
+                        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button onClick={handleTestFeature} disabled={testLoading} style={{ padding: '10px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#3B82F6,#10B981)', color: '#fff', fontWeight: 700, cursor: testLoading ? 'default' : 'pointer', fontSize: 13, opacity: testLoading ? 0.7 : 1 }}>
+                                {testLoading ? 'Sending...' : 'Test Feature'}
+                            </button>
+                            {testMsg && <span style={{ fontSize: 13, color: testMsg.includes('Failed') || testMsg.includes('Error') ? '#EF4444' : '#10B981' }}>{testMsg}</span>}
                         </div>
                     </div>
                 </section>

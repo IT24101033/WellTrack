@@ -26,6 +26,7 @@ const respondWithToken = (res, user, statusCode = 200) => {
             role: user.role,
             profileImage: user.profileImage,
             isActive: user.isActive,
+            phoneNumber: user.phoneNumber,
         },
     });
 };
@@ -138,7 +139,7 @@ const getProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
     try {
-        const { fullName, age, gender, height, weight, universityId } = req.body;
+        const { fullName, age, gender, height, weight, universityId, phone, phoneNumber } = req.body;
 
         const allowedUpdates = {};
         if (fullName !== undefined) allowedUpdates.fullName = fullName;
@@ -147,6 +148,9 @@ const updateProfile = async (req, res) => {
         if (height !== undefined) allowedUpdates.height = Number(height);
         if (weight !== undefined) allowedUpdates.weight = Number(weight);
         if (universityId !== undefined) allowedUpdates.universityId = universityId;
+        
+        const parsedPhone = phone !== undefined ? phone : phoneNumber;
+        if (parsedPhone !== undefined) allowedUpdates.phoneNumber = parsedPhone;
 
         // Multer attaches file info to req.file
         if (req.file) {

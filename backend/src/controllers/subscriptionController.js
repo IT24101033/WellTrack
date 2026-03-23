@@ -1,6 +1,7 @@
 'use strict';
 
 const Subscription = require('../models/subscriptionModel');
+const { sendAppAlert } = require('../utils/notificationService');
 
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, ...data });
 const fail = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -56,6 +57,16 @@ const updateSubscription = async (req, res) => {
             { $set: updateData },
             { new: true, upsert: true }
         );
+
+        if (planName) {
+            await sendAppAlert(
+                req.user.id,
+                'Subscription Updated',
+                `Your WellTrack subscription has been updated to the ${planName} plan. Enjoy your features!`,
+                'system'
+            );
+        }
+
         return ok(res, { subscription });
     } catch (err) {
         console.error('[updateSubscription]', err);

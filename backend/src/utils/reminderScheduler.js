@@ -8,9 +8,7 @@
 
 const cron = require('node-cron');
 const Reminder = require('../models/reminderModel');
-const Notification = require('../models/notificationModel');
-const User = require('../models/User');
-const { sendEmail, sendSMS } = require('./notificationService');
+const { sendAppAlert } = require('./notificationService');
 
 const CATEGORY_LABELS = {
     Workout: 'workout',
@@ -34,28 +32,11 @@ const processReminders = async () => {
 
         // Process each reminder individually to handle notifications
         for (const reminder of dueReminders) {
-            const user = await User.findById(reminder.userId);
             const title = `⏰ Reminder: ${reminder.activityTitle || 'Activity starting soon'}`;
             const message = `Your ${reminder.activityCategory || ''} activity "${reminder.activityTitle || ''}" is starting soon!`;
 
-            // 1. In-app notification
-            await Notification.create({
-                userId: reminder.userId,
-                title,
-                message,
-                type: 'wellness',
-                status: 'unread',
-            });
-
-            // 2. Email notification (if enabled)
-            if (user?.emailEnabled && user?.email) {
-                await sendEmail(user.email, title, message);
-            }
-
-            // 3. SMS notification (if enabled)
-            if (user?.smsEnabled && user?.phoneNumber) {
-                await sendSMS(user.phoneNumber, message);
-            }
+            // Delegate to the central app alert helper
+            await sendAppAlert(reminder.userId, title, message, 'wellness');
 
             // Mark as sent
             reminder.isSent = true;

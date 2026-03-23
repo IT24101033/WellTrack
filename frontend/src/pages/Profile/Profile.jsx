@@ -61,7 +61,7 @@ export default function Profile() {
     const [form, setForm] = useState({
         fullName: user?.fullName ?? '',
         email: user?.email ?? '',
-        phone: user?.phone ?? '',
+        phone: user?.phoneNumber ?? '',
         username: user?.username ?? '',
         height: user?.height ?? '',
         weight: user?.weight ?? '',

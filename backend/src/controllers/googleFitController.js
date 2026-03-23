@@ -2,6 +2,7 @@
 
 const User = require('../models/User');
 const StudentHealth = require('../models/studentHealthModel');
+const { computeHealthScore } = require('../utils/healthCalculator');
 
 /**
  * syncData
@@ -28,16 +29,39 @@ const syncData = async (req, res, next) => {
             
             if (healthEntry) {
                 // Update existing
-                healthEntry.physiological = { ...healthEntry.physiological, ...physiological };
-                healthEntry.activity = { ...healthEntry.activity, ...activity };
+                healthEntry.physiological = { ...healthEntry.physiological.toObject(), ...physiological };
+                healthEntry.activity = { ...healthEntry.activity.toObject(), ...activity };
+                
+                // Recalculate AI Health Score and Risk
+                const payload = {
+                    physiological: healthEntry.physiological,
+                    activity: healthEntry.activity,
+                    lifestyle: healthEntry.lifestyle,
+                    psychological: healthEntry.psychological
+                };
+                healthEntry.healthScore = computeHealthScore(payload);
+                healthEntry.riskAlert = (healthEntry.psychological?.stressScore > 8) && (healthEntry.physiological?.sleepHours < 5);
+
                 await healthEntry.save();
             } else {
                 // Create new
+                // Default subdocuments for empty schemas
+                const payload = {
+                    physiological,
+                    activity,
+                    lifestyle: {},
+                    psychological: {}
+                };
+                const healthScore = computeHealthScore(payload);
+                const riskAlert = false; // no stress data on newly created from fit
+
                 healthEntry = await StudentHealth.create({
                     userId,
                     date,
                     physiological,
-                    activity
+                    activity,
+                    healthScore,
+                    riskAlert
                 });
             }
             results.push(healthEntry);

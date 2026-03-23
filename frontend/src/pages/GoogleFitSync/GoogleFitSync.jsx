@@ -85,7 +85,7 @@ export default function GoogleFitSync() {
             'https://www.googleapis.com/auth/fitness.sleep.read',
             'https://www.googleapis.com/auth/fitness.heart_rate.read'
         ];
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scopes.join(' '))}`;
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scopes.join(' '))}&prompt=consent`;
         window.location.href = authUrl;
     };
 
@@ -124,15 +124,27 @@ export default function GoogleFitSync() {
 
             setSyncState(s => ({ ...s, progress: 50, status: 'Analyzing Sleep Patterns...' }));
 
-            // 2. Fetch Sleep Sessions safely
-            let sleepRes = { data: {} };
+            // 2. Fetch Sleep Sessions safely with Pagination
+            let sleepSessions = [];
             try {
-                sleepRes = await axios.get(`https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${encodeURIComponent(new Date(startTimeMillis).toISOString())}&endTime=${encodeURIComponent(new Date(endTimeMillis).toISOString())}`, {
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                    timeout: 5000 
-                });
+                let pageToken = '';
+                let pagesFetched = 0;
+                do {
+                    const url = `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${encodeURIComponent(new Date(startTimeMillis).toISOString())}&endTime=${encodeURIComponent(new Date(endTimeMillis).toISOString())}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+                    const res = await axios.get(url, { headers: { Authorization: `Bearer ${accessToken}` }, timeout: 8000 });
+                    if (res.data.session) {
+                        const sleepData = res.data.session.filter(s => [72, 109, 110, 111, 112].includes(parseInt(s.activityType)));
+                        sleepSessions = sleepSessions.concat(sleepData);
+                    }
+                    pageToken = res.data.nextPageToken;
+                    pagesFetched++;
+                    // Prevent infinite loops just in case
+                } while (pageToken && pagesFetched < 10);
             } catch (sfErr) {
                 console.warn('Sleep sessions fetch failed:', sfErr.message);
+                if (sfErr.response && sfErr.response.status === 403) {
+                    throw new Error("Missing Sleep permissions. Please disconnect, then re-authenticate and ensure you check ALL permission boxes.");
+                }
             }
 
             const buckets = aggRes.data.bucket || [];
@@ -156,12 +168,12 @@ export default function GoogleFitSync() {
                 if (minPoints?.length > 0) activeMins = minPoints[0].value?.[0]?.intVal || 0;
 
                 let sleepHours = 0;
-                if (sleepRes.data.session) {
-                    const sleepStageTypes = [72, 109, 110, 111]; 
-                    const daySleep = sleepRes.data.session.filter(s => {
-                        const sEnd = parseInt(s.endTimeMillis);
-                        return sEnd >= bucketStart && sEnd < (bucketStart + 86400000) && sleepStageTypes.includes(s.activityType);
-                    });
+                const daySleep = sleepSessions.filter(s => {
+                    const sEnd = parseInt(s.endTimeMillis);
+                    // Match any sleep session ending within this day's bucket calculation
+                    return sEnd >= bucketStart && sEnd < (bucketStart + 86400000);
+                });
+                if (daySleep.length > 0) {
                     const totalMillis = daySleep.reduce((acc, s) => acc + (parseInt(s.endTimeMillis) - parseInt(s.startTimeMillis)), 0);
                     sleepHours = parseFloat((totalMillis / (1000 * 60 * 60)).toFixed(1));
                 }

@@ -64,10 +64,10 @@ function AIHealthInsights({ onAddAiPlan, subscriptionPlan }) {
                         <Sparkles style={{ color: 'white', width: '22px', height: '22px' }} />
                     </div>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                        <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
                             🤖 AI Health Insights
                         </h2>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                             Powered by Google Gemini · Analyzes your real health data
                         </p>
                     </div>
@@ -143,7 +143,7 @@ function AIHealthInsights({ onAddAiPlan, subscriptionPlan }) {
                                         <span style={{ fontSize: '12px', fontWeight: 700, color: cat.color }}>{cat.label}</span>
                                     </div>
                                 </div>
-                                <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#374151' }}>
+                                <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
                                     {aiData.advice?.[cat.key] || 'No advice available.'}
                                 </p>
 
@@ -157,24 +157,24 @@ function AIHealthInsights({ onAddAiPlan, subscriptionPlan }) {
                                                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                                             }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                                                    <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>{plan.title}</h4>
+                                                    <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{plan.title}</h4>
                                                     <span style={{ fontSize: '10px', background: cat.color, color: 'white', padding: '3px 6px', borderRadius: '4px', fontWeight: 600, whiteSpace: 'nowrap' }}>
                                                         {plan.recommended_time || (cat.key === 'diet' ? 'Meal' : 'Activity')}
                                                     </span>
                                                 </div>
-                                                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#64748b', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{plan.description}</p>
+                                                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{plan.description}</p>
                                                 
                                                 <button 
                                                     onClick={() => onAddAiPlan && onAddAiPlan(plan, cat.key)}
                                                     style={{ 
-                                                        width: '100%', fontSize: '12px', background: 'white', 
+                                                        width: '100%', fontSize: '12px', background: 'var(--glass-bg)', 
                                                         color: cat.color, border: `1px solid ${cat.color}40`, 
                                                         padding: '6px 0', borderRadius: '8px', cursor: 'pointer', 
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center', 
                                                         gap: '6px', fontWeight: 600, transition: 'all 0.2s'
                                                     }}
                                                     onMouseEnter={e => { e.currentTarget.style.background = cat.color; e.currentTarget.style.color = 'white'; }}
-                                                    onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = cat.color; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-bg)'; e.currentTarget.style.color = cat.color; }}
                                                 >
                                                     <CalendarPlus size={14} /> Add to Schedule
                                                 </button>
@@ -191,7 +191,7 @@ function AIHealthInsights({ onAddAiPlan, subscriptionPlan }) {
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
                                 <Youtube style={{ width: '18px', height: '18px', color: '#ef4444' }} />
-                                <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
                                     ▶ Recommended YouTube Videos based on your data
                                 </span>
                             </div>
@@ -221,10 +221,10 @@ function AIHealthInsights({ onAddAiPlan, subscriptionPlan }) {
                                                 </div>
                                             </div>
                                             <div style={{ padding: '10px' }}>
-                                                <p style={{ margin: 0, fontSize: '11px', fontWeight: 600, lineHeight: '1.4', color: '#1e293b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                <p style={{ margin: 0, fontSize: '11px', fontWeight: 600, lineHeight: '1.4', color: 'var(--text-primary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                                     {video.title}
                                                 </p>
-                                                <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#94a3b8' }}>{video.channelTitle}</p>
+                                                <p style={{ margin: '4px 0 0', fontSize: '10px', color: 'var(--text-muted)' }}>{video.channelTitle}</p>
                                             </div>
                                         </div>
                                     </a>
@@ -368,11 +368,11 @@ function HealthTipsDashboardInner() {
     };
 
     return (
-        <div className="p-6 min-h-screen text-gray-800" style={{ background: 'var(--bg-primary, #f3f6fc)' }}>
+        <div className="p-6 min-h-screen" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
             {/* Header */}
             <div className="mb-6 text-center md:text-left">
-                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Tips &amp; Advice</h1>
-                <p className="text-gray-500 mt-2">Personalized insights based on your recent activity, sleep, and stress data.</p>
+                <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Tips &amp; Advice</h1>
+                <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>Personalized insights based on your recent activity, sleep, and stress data.</p>
             </div>
 
             {error && (
@@ -396,13 +396,15 @@ function HealthTipsDashboardInner() {
 
                 {/* Left: Tips Board */}
                 <div className="lg:col-span-2">
-                    <div className="flex gap-2 mb-6 border-b border-gray-200 pb-2 overflow-x-auto no-scrollbar">
+                    <div className="flex gap-2 mb-6 pb-2 overflow-x-auto no-scrollbar" style={{ borderBottom: '1px solid var(--glass-border)' }}>
                         {['ALL', 'DIET', 'WORKOUT', 'MENTAL'].map(tab => (
                             <button key={tab} onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${activeTab === tab
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/40'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                }`}
+                                className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors`}
+                                style={{
+                                    color: activeTab === tab ? 'var(--accent-blue)' : 'var(--text-muted)',
+                                    borderBottom: activeTab === tab ? `2px solid var(--accent-blue)` : '2px solid transparent',
+                                    background: activeTab === tab ? 'rgba(59,130,246,0.06)' : 'transparent',
+                                }}
                             >{tab}</button>
                         ))}
                     </div>
@@ -413,18 +415,21 @@ function HealthTipsDashboardInner() {
                                 <Loader2 size={32} className="animate-spin" />
                             </div>
                         ) : filteredTips.length === 0 ? (
-                            <div className="col-span-full py-12 text-center bg-white/60 backdrop-blur-md rounded-2xl border border-white shadow-sm">
-                                <div className="text-gray-400 mb-2">🍃</div>
-                                <h3 className="text-lg font-medium text-gray-700">No tips found.</h3>
-                                <p className="text-gray-500 text-sm">Check back later for personalized insights.</p>
+                            <div className="col-span-full py-12 text-center rounded-2xl" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                                <div className="mb-2" style={{ color: 'var(--text-muted)' }}>🍃</div>
+                                <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No tips found.</h3>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Check back later for personalized insights.</p>
                             </div>
                         ) : (
                             filteredTips.map(tip => (
                                 <div key={tip._id} onClick={() => setSelectedTip(tip)}
-                                    className="bg-white/70 backdrop-blur-md border border-white shadow-sm hover:shadow-md rounded-2xl p-5 cursor-pointer transition-all duration-300 transform hover:-translate-y-1 hover:bg-white/90 flex flex-col h-full"
+                                    className="backdrop-blur-md rounded-2xl p-5 cursor-pointer transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full"
+                                    style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}
                                 >
                                     {tip.image_url && (
-                                        <div className="w-full h-32 mb-4 rounded-xl overflow-hidden shrink-0 shadow-sm border border-gray-100">
+                                        <div className="w-full h-32 mb-4 rounded-xl overflow-hidden shrink-0 shadow-sm" style={{ border: '1px solid var(--glass-border)' }}>
                                             <img src={tip.image_url} alt={tip.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                                         </div>
                                     )}
@@ -442,13 +447,13 @@ function HealthTipsDashboardInner() {
                                             )}
                                         </div>
                                         {tip.recommended_time && (
-                                            <span className="flex items-center gap-1 text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+                                            <span className="flex items-center gap-1 text-xs font-mono px-2 py-1 rounded-md" style={{ color: 'var(--text-muted)', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                                                 <Clock size={12} /> {tip.recommended_time}
                                             </span>
                                         )}
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-800 mb-2 leading-tight">{tip.title}</h3>
-                                    <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed flex-1">{tip.description}</p>
+                                    <h3 className="text-lg font-bold mb-2 leading-tight" style={{ color: 'var(--text-primary)' }}>{tip.title}</h3>
+                                    <p className="text-sm line-clamp-2 leading-relaxed flex-1" style={{ color: 'var(--text-secondary)' }}>{tip.description}</p>
                                 </div>
                             ))
                         )}
@@ -457,25 +462,25 @@ function HealthTipsDashboardInner() {
 
                 {/* Right: Timeline */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white/60 backdrop-blur-xl border border-white shadow-lg rounded-3xl p-6 sticky top-6">
-                        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <div className="backdrop-blur-xl rounded-3xl p-6 sticky top-6" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
+                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                             <CalendarPlus size={20} className="text-blue-500" /> Daily Habit Timeline
                         </h2>
                         {loading ? (
-                            <div className="flex justify-center p-6 text-gray-400"><Loader2 size={24} className="animate-spin" /></div>
+                            <div className="flex justify-center p-6" style={{ color: 'var(--text-muted)' }}><Loader2 size={24} className="animate-spin" /></div>
                         ) : timelineTips.length === 0 ? (
-                            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100 text-gray-400 text-sm">
+                            <div className="text-center p-6 rounded-2xl text-sm" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}>
                                 No scheduled tips yet. Add a tip with a time to see it here.
                             </div>
                         ) : (
-                            <div className="relative border-l-2 border-blue-100 ml-3 space-y-6">
+                            <div className="relative ml-3 space-y-6" style={{ borderLeft: '2px solid var(--accent-blue)', opacity: 0.4 }}>
                                 {timelineTips.map((tip, idx) => (
                                     <div key={idx} className="relative pl-6">
-                                        <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white border-4 border-blue-400 shadow-sm" />
-                                        <div className="text-xs font-mono text-blue-500 font-semibold mb-1">{tip.recommended_time}</div>
-                                        <div className="bg-white/80 border border-gray-100 rounded-xl p-3 shadow-sm">
-                                            <h4 className="font-semibold text-gray-800 text-sm">{tip.title}</h4>
-                                            <span className="text-xs text-gray-500 mt-1 inline-block bg-gray-50 px-2 py-0.5 rounded">{tip.target_type} Target</span>
+                                        <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-4 border-blue-400 shadow-sm" style={{ background: 'var(--glass-bg)' }} />
+                                        <div className="text-xs font-mono font-semibold mb-1 text-blue-400">{tip.recommended_time}</div>
+                                        <div className="rounded-xl p-3 shadow-sm" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                                            <h4 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{tip.title}</h4>
+                                            <span className="text-xs mt-1 inline-block px-2 py-0.5 rounded" style={{ color: 'var(--text-muted)', background: 'var(--glass-bg)' }}>{tip.target_type} Target</span>
                                         </div>
                                     </div>
                                 ))}
@@ -487,37 +492,33 @@ function HealthTipsDashboardInner() {
 
             {/* Modal */}
             {selectedTip && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm transition-opacity">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-transform scale-100 flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-transform scale-100 flex flex-col max-h-[90vh]" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(24px)', border: '1px solid var(--glass-border)' }}>
                         {selectedTip.image_url && (
-                            <div className="w-full h-48 shrink-0 bg-gray-100 relative">
+                            <div className="w-full h-48 shrink-0 relative" style={{ background: 'var(--glass-bg)' }}>
                                 <img src={selectedTip.image_url} alt={selectedTip.title} className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                                 <button onClick={() => setSelectedTip(null)} className="absolute top-4 right-4 text-white hover:text-gray-200 bg-black/30 rounded-full w-8 h-8 flex items-center justify-center shadow-sm backdrop-blur-sm">&times;</button>
                             </div>
                         )}
-                        <div className={`p-6 border-b shrink-0 ${!selectedTip.image_url ? (
-                            selectedTip.category === 'DIET'    ? 'bg-emerald-50 border-emerald-100' :
-                            selectedTip.category === 'WORKOUT' ? 'bg-orange-50 border-orange-100'  :
-                                                                  'bg-purple-50 border-purple-100'
-                        ) : 'bg-white border-gray-100 pt-5'}`}>
+                        <div className={`p-6 border-b shrink-0`} style={{ borderColor: 'var(--glass-border)', background: 'var(--glass-bg)' }}>
                             {!selectedTip.image_url && (
                                 <div className="flex justify-between items-start w-full">
-                                    <span className={`text-xs px-3 py-1 bg-white rounded-full font-bold uppercase shadow-sm ${
-                                        selectedTip.category === 'DIET'    ? 'text-emerald-600' :
-                                        selectedTip.category === 'WORKOUT' ? 'text-orange-600'  : 'text-purple-600'
+                                    <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase shadow-sm ${
+                                        selectedTip.category === 'DIET'    ? 'text-emerald-600 bg-emerald-100/80' :
+                                        selectedTip.category === 'WORKOUT' ? 'text-orange-600 bg-orange-100/80'  : 'text-purple-600 bg-purple-100/80'
                                     }`}>{selectedTip.category}</span>
-                                    <button onClick={() => setSelectedTip(null)} className="text-gray-400 hover:text-gray-600 font-bold bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm">&times;</button>
+                                    <button onClick={() => setSelectedTip(null)} className="font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-sm" style={{ color: 'var(--text-muted)', background: 'var(--glass-bg)' }}>&times;</button>
                                 </div>
                             )}
-                            <h2 className="text-2xl font-bold text-gray-900 mt-3 leading-tight tracking-tight">{selectedTip.title}</h2>
+                            <h2 className="text-2xl font-bold mt-3 leading-tight tracking-tight" style={{ color: 'var(--text-primary)' }}>{selectedTip.title}</h2>
                             <div className="flex gap-2 mt-3">
-                                <span className="text-xs text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200">Difficulty: {selectedTip.difficulty_level}</span>
-                                <span className="text-xs text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200">Target: {selectedTip.target_type}</span>
+                                <span className="text-xs font-medium px-3 py-1.5 rounded-md" style={{ color: 'var(--text-secondary)', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>Difficulty: {selectedTip.difficulty_level}</span>
+                                <span className="text-xs font-medium px-3 py-1.5 rounded-md" style={{ color: 'var(--text-secondary)', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>Target: {selectedTip.target_type}</span>
                             </div>
                         </div>
                         <div className="p-6 overflow-y-auto no-scrollbar">
-                            <p className="text-gray-700 leading-relaxed text-sm mb-6 whitespace-pre-line bg-gray-50 p-4 rounded-xl border border-gray-100">{selectedTip.description}</p>
+                            <p className="leading-relaxed text-sm mb-6 whitespace-pre-line p-4 rounded-xl" style={{ color: 'var(--text-secondary)', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>{selectedTip.description}</p>
                             <button onClick={() => handleAddToSchedule(selectedTip)}
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                             >
@@ -534,13 +535,13 @@ function HealthTipsDashboardInner() {
 // Sub-component for summary cards
 function SummaryCard({ title, count, icon, bg }) {
     return (
-        <div className={`p-5 rounded-2xl border backdrop-blur-md shadow-sm transition-transform hover:-translate-y-1 duration-300 ${bg}`}>
+        <div className="p-5 rounded-2xl backdrop-blur-md shadow-sm transition-transform hover:-translate-y-1 duration-300" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
             <div className="flex justify-between items-center">
                 <div>
-                    <p className="text-gray-500 font-medium text-sm mb-1">{title}</p>
-                    <div className="text-3xl font-extrabold text-gray-800">{count}</div>
+                    <p className="font-medium text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{title}</p>
+                    <div className="text-3xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{count}</div>
                 </div>
-                <div className="p-3 bg-white/80 rounded-xl shadow-sm">{icon}</div>
+                <div className="p-3 rounded-xl shadow-sm" style={{ background: 'var(--glass-bg)' }}>{icon}</div>
             </div>
         </div>
     );

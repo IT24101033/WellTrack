@@ -5,6 +5,20 @@ const StudentHealth = require('../models/studentHealthModel');
 const { computeHealthScore } = require('../utils/healthCalculator');
 
 /**
+ * Sanitize physiological data from Google Fit.
+ * Google Fit may return 0 for unavailable metrics which would fail
+ * Mongoose min-value validators. Replace invalid values with null.
+ */
+const sanitizePhysiological = (physio = {}) => ({
+    height:           (physio.height           > 0)  ? physio.height           : null,
+    weight:           (physio.weight           > 0)  ? physio.weight           : null,
+    bmi:              (physio.bmi              > 0)  ? physio.bmi              : null,
+    restingHeartRate: (physio.restingHeartRate >= 30) ? physio.restingHeartRate : null,
+    sleepHours:       (physio.sleepHours       != null && physio.sleepHours >= 0) ? physio.sleepHours : null,
+    sleepQuality:     (physio.sleepQuality     >= 1)  ? physio.sleepQuality    : null,
+});
+
+/**
  * syncData
  * POST /api/google-fit/sync
  * 
@@ -22,7 +36,8 @@ const syncData = async (req, res, next) => {
 
         const results = [];
         for (const entry of entries) {
-            const { date, physiological, activity } = entry;
+            const { date, activity } = entry;
+            const physiological = sanitizePhysiological(entry.physiological);
             
             // Check for existing entry
             let healthEntry = await StudentHealth.findOne({ userId, date });
@@ -55,10 +70,15 @@ const syncData = async (req, res, next) => {
                 const healthScore = computeHealthScore(payload);
                 const riskAlert = false; // no stress data on newly created from fit
 
+                // Filter out null values so Mongoose doesn't validate absent fields
+                const cleanPhysio = Object.fromEntries(
+                    Object.entries(physiological).filter(([, v]) => v !== null)
+                );
+
                 healthEntry = await StudentHealth.create({
                     userId,
                     date,
-                    physiological,
+                    physiological: cleanPhysio,
                     activity,
                     healthScore,
                     riskAlert

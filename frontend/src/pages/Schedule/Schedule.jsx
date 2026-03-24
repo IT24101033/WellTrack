@@ -141,6 +141,7 @@ function Skeleton({ className }) {
 function ActivityModal({ initial, onSave, onClose, loading }) {
     const [form, setForm] = useState(initial || EMPTY_FORM);
     const [errors, setErrors] = useState({});
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     const setF = (k, v) => {
         setForm(f => ({ ...f, [k]: v }));
@@ -150,7 +151,11 @@ function ActivityModal({ initial, onSave, onClose, loading }) {
     const validate = () => {
         const errs = {};
         if (!form.title.trim()) errs.title = 'Title is required';
-        if (!form.date) errs.date = 'Date is required';
+        if (!form.date) {
+            errs.date = 'Date is required';
+        } else if (!initial && form.date < today) {
+            errs.date = 'Cannot schedule activities for past dates';
+        }
         if (!form.startTime) errs.startTime = 'Start time required';
         if (!form.endTime) errs.endTime = 'End time required';
         if (form.startTime && form.endTime && form.startTime >= form.endTime)
@@ -231,6 +236,7 @@ function ActivityModal({ initial, onSave, onClose, loading }) {
                     <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-secondary)' }}>Date *</label>
                         <input type="date" className="glass-input" value={form.date}
+                            min={initial ? undefined : today}
                             onChange={e => setF('date', e.target.value)} />
                         {errors.date && <p className="text-xs mt-1 text-red-400">{errors.date}</p>}
                     </div>

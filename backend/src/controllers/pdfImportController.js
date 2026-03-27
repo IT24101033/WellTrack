@@ -43,7 +43,7 @@ const extractTextWithOCR = async (pdfBuffer, filename) => {
 
     formData.append('file', blob, filename || 'upload.pdf');
     // Using user-provided OCR API key for reliable extraction
-    formData.append('apikey', 'K85355575688957'); 
+    formData.append('apikey', process.env.OCR_API_KEY || 'K85355575688957');
     formData.append('language', 'eng');
     formData.append('isTable', 'true');   // better column preservation
     formData.append('OCREngine', '2');      // engine 2 is more accurate for documents

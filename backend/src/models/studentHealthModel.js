@@ -72,6 +72,10 @@ const studentHealthSchema = new mongoose.Schema(
         // ── Computed / derived ───────────────────────────────────────────
         healthScore: { type: Number, min: 0, max: 100, default: null }, // 0–100
         riskAlert: { type: Boolean, default: false }, // stress > 8 && sleep < 5
+
+        // ── AI Prediction Sync ──────────────────────────────────────────
+        aiRisk: { type: Number, default: null },       // XGBoost risk % 
+        aiConfidence: { type: Number, default: null }, // Model confidence %
     },
     { timestamps: true, versionKey: false }
 );

@@ -11,6 +11,8 @@ import { getUserReports, getUserDashboard, createReport } from '../../services/r
 import { fetchHealthEntries } from '../../services/healthService';
 import { useAuth } from '../../context/AuthContext';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const GlassTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -99,12 +101,19 @@ export default function Reports() {
     const { user } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [selectedType, setSelectedType] = useState('Weekly Summary');
+    const [customFrom, setCustomFrom] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 14);
+        return d.toISOString().slice(0, 10);
+    });
+    const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
     const [importedHRData, setImportedHRData] = useState([]);
     const [importSummary, setImportSummary] = useState(null);
     const [chartData, setChartData] = useState(initialWeekData);
     const [reportsData, setReportsData] = useState(initialReports);
     const [dashboardStats, setDashboardStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [generating, setGenerating] = useState(false);
 
     useEffect(() => {
         const loadDocs = async () => {
@@ -114,7 +123,10 @@ export default function Reports() {
             }
             try {
                 const uid = user.id || user._id;
-                // Fetch reports
+                const token = localStorage.getItem('healthPredict_token');
+                const authH = { Authorization: `Bearer ${token}` };
+
+                // ── 1. Fetch saved reports ──────────────────────────────────
                 const repRes = await getUserReports(uid);
                 if (repRes.data?.success) {
                     const apiReps = repRes.data.data || [];
@@ -129,13 +141,13 @@ export default function Reports() {
                     setReportsData(mapped);
                 }
 
-                // Fetch dashboard stats (total_reports, latest_risk_level)
+                // ── 2. Fetch dashboard stats ────────────────────────────────
                 const dashRes = await getUserDashboard(uid);
                 if (dashRes.data?.success) {
                     setDashboardStats(dashRes.data.data);
                 }
 
-                // Fetch HealthEntries for the chart
+                // ── 3. Fetch HealthEntries for the week chart ───────────────
                 const healthRes = await fetchHealthEntries({ limit: 7 });
                 if (healthRes.data?.success && healthRes.data.entries?.length > 0) {
                     const sorted = [...healthRes.data.entries].sort((a, b) => a.date.localeCompare(b.date));
@@ -144,7 +156,7 @@ export default function Reports() {
                         sleep: e.physiological?.sleepHours || 0,
                         steps: e.activity?.stepsPerDay ? Math.round(e.activity.stepsPerDay / 100) / 10 : 0,
                         stress: e.psychological?.stressScore || 0,
-                        risk: e.healthScore !== undefined ? Math.max(0, 100 - e.healthScore) : 0 // approx risk
+                        risk: e.healthScore !== undefined ? Math.max(0, 100 - e.healthScore) : 0
                     }));
                     while(newChartData.length < 7) {
                         newChartData.unshift({ day: '-', sleep: 0, steps: 0, stress: 0, risk: 0 });
@@ -152,6 +164,30 @@ export default function Reports() {
                     if (newChartData.length > 7) newChartData.splice(0, newChartData.length - 7);
                     setChartData(newChartData);
                 }
+
+                // ── 4. Restore analytics summary from DB (persists navigation) ──
+                const summaryRes = await fetch(`${API_BASE}/reports/analytics-summary`, { headers: authH });
+                const summaryJson = await summaryRes.json();
+                if (summaryJson.success && summaryJson.data) {
+                    const s = summaryJson.data;
+                    setImportSummary({
+                        total_records: s.total_records,
+                        avg_hr: s.avg_hr,
+                        min_hr: s.min_hr,
+                        max_hr: s.max_hr,
+                        exercise_sessions: s.exercise_sessions,
+                        risk_score: null, // populated from hr-records below
+                        risk_category: null,
+                    });
+                }
+
+                // ── 5. Restore HR chart data from persisted HealthRecords ───
+                const hrRes = await fetch(`${API_BASE}/reports/hr-records`, { headers: authH });
+                const hrJson = await hrRes.json();
+                if (hrJson.success && hrJson.data?.length > 0) {
+                    setImportedHRData(hrJson.data);
+                }
+
             } catch (err) {
                 console.error('Failed to load reports', err);
             }
@@ -200,92 +236,197 @@ export default function Reports() {
 
     const generateReportPDF = (report) => {
         const doc = new jsPDF();
-        
-        // --- 1. Header Section ---
-        doc.setFontSize(24);
-        doc.setTextColor(15, 23, 42); // slate-900
-        doc.text("Smart Health Analytics Report", 14, 22);
-        
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(59, 130, 246); // Blue accent line
-        doc.line(14, 28, 196, 28);
-        
-        // --- 2. Report Metadata ---
-        doc.setFontSize(11);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Report Type: ${report.name}`, 14, 38);
-        doc.text(`Generated On: ${report.date}`, 14, 44);
-        doc.text(`Patient Profile: ${user?.fullName || 'Registered User'}`, 14, 50);
+        const isWeekly   = report.name === 'Weekly Summary';
+        const isMonthly  = report.name === 'Monthly Overview';
+        const isCustom   = report.name === 'Custom Date Range';
 
-        // --- 3. Executive Risk Summary ---
-        doc.setFontSize(14);
+        // ── Accent colour per type ──────────────────────────────────────────
+        const accentRGB  = isWeekly ? [59, 130, 246] : isMonthly ? [139, 92, 246] : [16, 185, 129];
+        const accentHex  = isWeekly ? '#3b82f6'      : isMonthly ? '#8b5cf6'       : '#10b981';
+
+        // ── Period label ────────────────────────────────────────────────────
+        const periodLabel = isWeekly  ? 'Last 7 Days'
+                          : isMonthly ? 'Last 30 Days'
+                          : `${report.customFrom || '—'} → ${report.customTo || '—'}`;
+
+        // ── Data rows (chart): weekly uses all 7, monthly repeats pattern ──
+        const realDays = chartData.filter(d => d.day !== '-');
+        const avgSteps = realDays.length ? Math.round(realDays.reduce((a, c) => a + c.steps * 1000, 0) / realDays.length) : 0;
+        const avgSleep = realDays.length ? (realDays.reduce((a, c) => a + c.sleep, 0) / realDays.length).toFixed(1) : 0;
+        const avgStress = realDays.length ? (realDays.reduce((a, c) => a + c.stress, 0) / realDays.length).toFixed(1) : 0;
+        const avgRisk   = realDays.length ? (realDays.reduce((a, c) => a + c.risk, 0) / realDays.length).toFixed(1) : 0;
+
+        // ── 1. Header ───────────────────────────────────────────────────────
+        doc.setFontSize(22);
         doc.setTextColor(15, 23, 42);
-        doc.text("Executive Risk Summary", 14, 65);
-        
+        const title = isWeekly  ? 'Weekly Health Summary'
+                    : isMonthly ? 'Monthly Health Overview'
+                    : 'Custom Range Health Report';
+        doc.text(title, 14, 22);
+
+        doc.setLineWidth(0.6);
+        doc.setDrawColor(...accentRGB);
+        doc.line(14, 28, 196, 28);
+
+        // ── 2. Metadata ─────────────────────────────────────────────────────
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Report Type : ${report.name}`, 14, 37);
+        doc.text(`Period      : ${periodLabel}`, 14, 43);
+        doc.text(`Generated On: ${report.date}`, 14, 49);
+        doc.text(`Patient     : ${user?.fullName || 'Registered User'}`, 14, 55);
+
+        // ── 3. Risk Banner ──────────────────────────────────────────────────
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
+        doc.text('Executive Risk Summary', 14, 70);
+
         const isLow = report.risk?.includes('Low');
         const isMed = report.risk?.includes('Moderate');
-        const riskColor = isLow ? [16, 185, 129] : isMed ? [245, 158, 11] : [239, 68, 68];
-        
-        doc.setFillColor(...riskColor);
-        doc.rect(14, 70, 182, 16, 'F');
-        
-        doc.setFontSize(12);
+        const riskRGB = isLow ? [16, 185, 129] : isMed ? [245, 158, 11] : [239, 68, 68];
+
+        doc.setFillColor(...riskRGB);
+        doc.roundedRect(14, 74, 182, 16, 3, 3, 'F');
+        doc.setFontSize(11);
         doc.setTextColor(255, 255, 255);
-        doc.text(`Overall Health Risk: ${report.risk} (${report.riskPct}%)`, 20, 80);
+        doc.text(`Overall Health Risk: ${report.risk}   |   Risk Score: ${report.riskPct}%`, 20, 84);
 
-        // --- 4. 7-Day Wearable Data Breakdown ---
-        doc.setFontSize(14);
+        // ── 4. Heart Rate Summary (from PDF import) ─────────────────────────
+        let curY = 100;
+        if (importSummary?.avg_hr) {
+            doc.setFontSize(13);
+            doc.setTextColor(15, 23, 42);
+            doc.text('Heart Rate Analysis (from Imported PDF)', 14, curY);
+            autoTable(doc, {
+                startY: curY + 5,
+                head: [['Metric', 'Value']],
+                body: [
+                    ['Average Heart Rate', `${Number(importSummary.avg_hr).toFixed(1)} bpm`],
+                    ['Min Heart Rate',     `${importSummary.min_hr} bpm`],
+                    ['Max Heart Rate',     `${importSummary.max_hr} bpm`],
+                    ['Exercise Sessions',  `${importSummary.exercise_sessions}`],
+                    ['Total Records',      `${importSummary.total_records}`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: accentRGB },
+                styles: { fontSize: 10, cellPadding: 3 },
+                columnStyles: { 0: { fontStyle: 'bold' } },
+            });
+            curY = doc.lastAutoTable.finalY + 12;
+        }
+
+        // ── 5. Type-specific wearable data table ────────────────────────────
+        const tableTitle = isWeekly  ? '7-Day Wearable Data Breakdown'
+                         : isMonthly ? '30-Day Wearable Summary (Last 7 Days Synced)'
+                         : 'Wearable Data for Selected Period';
+
+        doc.setFontSize(13);
         doc.setTextColor(15, 23, 42);
-        doc.text("7-Day Synced Wearable Data", 14, 102);
+        doc.text(tableTitle, 14, curY);
 
-        // Prepare table data from chartData
-        const realDays = chartData.filter(d => d.day !== '-');
         const tableBody = realDays.map(d => [
             d.day,
             `${(d.steps * 1000).toLocaleString()} steps`,
             `${d.sleep} hrs`,
             `${d.stress}/10`,
-            `${d.risk.toFixed(1)}%`
+            `${d.risk.toFixed(1)}%`,
         ]);
 
+        // For monthly, add a monthly averages summary row
+        if (isMonthly && realDays.length > 0) {
+            tableBody.push([
+                '── Avg ──',
+                `${avgSteps.toLocaleString()} steps`,
+                `${avgSleep} hrs`,
+                `${avgStress}/10`,
+                `${avgRisk}%`,
+            ]);
+        }
+
         autoTable(doc, {
-            startY: 108,
-            head: [['Day', 'Activity (Steps)', 'Sleep Duration', 'Stress Level', 'Daily Risk Impact']],
+            startY: curY + 5,
+            head: [['Day / Period', 'Activity', 'Sleep', 'Stress', 'Risk Impact']],
             body: tableBody.length > 0 ? tableBody : [['No synced data available', '-', '-', '-', '-']],
             theme: 'striped',
-            headStyles: { fillColor: [59, 130, 246] },
-            styles: { fontSize: 10, cellPadding: 4 },
-            alternateRowStyles: { fillColor: [241, 245, 249] }
+            headStyles: { fillColor: accentRGB },
+            styles: { fontSize: 10, cellPadding: 3.5 },
+            alternateRowStyles: { fillColor: [241, 245, 249] },
         });
 
-        const finalY = doc.lastAutoTable.finalY || 110;
+        curY = doc.lastAutoTable.finalY + 12;
 
-        // --- 5. AI Insights & Averages ---
-        doc.setFontSize(14);
-        doc.setTextColor(15, 23, 42);
-        doc.text("AI Health Insights", 14, finalY + 15);
+        // ── 6. Monthly-only: extra month summary block ───────────────────────
+        if (isMonthly) {
+            doc.setFontSize(13);
+            doc.setTextColor(15, 23, 42);
+            doc.text('Monthly Averages Overview', 14, curY);
+            autoTable(doc, {
+                startY: curY + 5,
+                head: [['KPI', '30-Day Average']],
+                body: [
+                    ['Steps per Day',  `${avgSteps.toLocaleString()}`],
+                    ['Sleep per Night', `${avgSleep} hrs`],
+                    ['Stress Score',   `${avgStress} / 10`],
+                    ['Risk Score',     `${avgRisk}%`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: accentRGB },
+                styles: { fontSize: 10, cellPadding: 3 },
+                columnStyles: { 0: { fontStyle: 'bold' } },
+            });
+            curY = doc.lastAutoTable.finalY + 12;
+        }
 
-        const avgSteps = realDays.length ? Math.round(realDays.reduce((a,c) => a + c.steps * 1000, 0) / realDays.length) : 0;
-        const avgSleep = realDays.length ? (realDays.reduce((a,c) => a + c.sleep, 0) / realDays.length).toFixed(1) : 0;
+        // ── 7. Custom-only: date range highlight block ───────────────────────
+        if (isCustom) {
+            doc.setFontSize(13);
+            doc.setTextColor(15, 23, 42);
+            doc.text('Selected Period Summary', 14, curY);
+            autoTable(doc, {
+                startY: curY + 5,
+                head: [['KPI', 'Value']],
+                body: [
+                    ['Period',          periodLabel],
+                    ['Avg Steps / Day', `${avgSteps.toLocaleString()}`],
+                    ['Avg Sleep / Night', `${avgSleep} hrs`],
+                    ['Avg Stress',      `${avgStress} / 10`],
+                    ['Avg Risk Score',  `${avgRisk}%`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: accentRGB },
+                styles: { fontSize: 10, cellPadding: 3 },
+                columnStyles: { 0: { fontStyle: 'bold' } },
+            });
+            curY = doc.lastAutoTable.finalY + 12;
+        }
 
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        const insightText = importSummary ? 
-            `Based on your imported clinical PDF and wearable data, your average resting heart rate is ${(importSummary.avg_hr || 0).toFixed(1)} bpm. Over the last 7 days, you've averaged ${avgSteps.toLocaleString()} steps and ${avgSleep} hours of sleep per day. Your current trajectory perfectly correlates with a ${report.risk} status. Maintain your current routines to optimize long-term health span.` : 
-            `Over the last 7 days, your smartwatch recorded an average of ${avgSteps.toLocaleString()} steps and ${avgSleep} hours of sleep per day. Maintaining consistent sleep schedules and meeting daily step goals will dramatically lower your overarching health risk profile over time.`;
-            
-        const insightLines = doc.splitTextToSize(insightText, 180);
-        doc.text(insightLines, 14, finalY + 23);
+        // ── 8. AI Insights ───────────────────────────────────────────────────
+        if (curY < 255) {
+            doc.setFontSize(13);
+            doc.setTextColor(15, 23, 42);
+            doc.text('AI Health Insights', 14, curY);
 
-        // Footer
+            const periodWord = isWeekly ? '7 days' : isMonthly ? '30 days' : 'the selected period';
+            const hrPart = importSummary?.avg_hr
+                ? `Your average resting heart rate is ${Number(importSummary.avg_hr).toFixed(1)} bpm. `
+                : '';
+            const insightText = `${hrPart}Over the last ${periodWord}, you averaged ${avgSteps.toLocaleString()} steps and ${avgSleep} hrs of sleep per night with a stress score of ${avgStress}/10. Your overall health trajectory corresponds to a ${report.risk} status. ${isLow ? 'Keep up your healthy habits!' : isMed ? 'Consider improving sleep and reducing stress.' : 'We recommend consulting a healthcare professional and reviewing your lifestyle habits.'}`;
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 116, 139);
+            const insightLines = doc.splitTextToSize(insightText, 180);
+            doc.text(insightLines, 14, curY + 7);
+        }
+
+        // ── Footer ───────────────────────────────────────────────────────────
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
-        doc.text("Generated securely by Smart Health Risk Predictor Analytics. Do not share your medical records publicly.", 14, 285);
+        doc.text('Generated securely by Smart Health Risk Predictor Analytics. Do not share medical records publicly.', 14, 288);
 
-        // Save
+        // ── Save ─────────────────────────────────────────────────────────────
         const safeName = report.name.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
-        const filename = `${safeName}_Advanced_Risk_Report.pdf`;
-        doc.save(filename);
+        const dateStr  = new Date().toISOString().slice(0, 10);
+        doc.save(`${safeName}_${dateStr}.pdf`);
     };
 
     if (loading) {
@@ -469,48 +610,113 @@ export default function Reports() {
                                 </button>
                             ))}
                         </div>
+
+                        {/* Custom Date Range Picker */}
+                        {selectedType === 'Custom Date Range' && (
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>From</label>
+                                    <input
+                                        type="date"
+                                        value={customFrom}
+                                        max={customTo}
+                                        onChange={e => setCustomFrom(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-xl text-sm"
+                                        style={{
+                                            background: 'var(--glass-bg)',
+                                            border: '1px solid var(--glass-border)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none',
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>To</label>
+                                    <input
+                                        type="date"
+                                        value={customTo}
+                                        min={customFrom}
+                                        max={new Date().toISOString().slice(0, 10)}
+                                        onChange={e => setCustomTo(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-xl text-sm"
+                                        style={{
+                                            background: 'var(--glass-bg)',
+                                            border: '1px solid var(--glass-border)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                         <div className="flex justify-end gap-3 mt-5">
                             <button className="glass-btn-outline px-4 py-2 text-sm" onClick={() => setShowModal(false)}>Cancel</button>
-                            <button className="glass-btn px-4 py-2 text-sm flex items-center gap-2" onClick={async () => {
-                                const uid = user?.id || user?._id;
-                                if (!uid) return;
-                                let riskLevel = importSummary ? importSummary.risk_category : 'Low Risk';
-                                let riskPercentage = importSummary ? parseFloat(importSummary.risk_score).toFixed(1) : 25;
-                                let rId = Date.now().toString();
+                            <button
+                                disabled={generating}
+                                className="glass-btn px-4 py-2 text-sm flex items-center gap-2"
+                                onClick={async () => {
+                                    const uid = user?.id || user?._id;
+                                    if (!uid) return;
+                                    setGenerating(true);
 
-                                try {
-                                    // Make backend createReport call
-                                    const d = new Date();
-                                    const res = await createReport({
-                                        user_id: uid,
-                                        report_type: selectedType,
-                                        start_date: new Date(d.setDate(d.getDate() - 7)).toISOString(),
-                                        end_date: new Date().toISOString(),
-                                        health_data: [],
-                                        predicted_risk_score: importSummary ? (parseFloat(importSummary.risk_score) / 100).toFixed(4) : 0.25,
-                                    });
-                                    if (res.data?.success) {
-                                        const r = res.data.data;
-                                        rId = r._id;
-                                        riskLevel = (r.predicted_risk_level || 'Low').charAt(0).toUpperCase() + (r.predicted_risk_level || 'Low').slice(1) + ' Risk';
-                                        if (r.predicted_risk_score != null) riskPercentage = (r.predicted_risk_score * 100).toFixed(1);
+                                    // ── Compute date range per type ────────
+                                    const now = new Date();
+                                    let startDate, endDate = now.toISOString();
+                                    if (selectedType === 'Weekly Summary') {
+                                        const s = new Date(now);
+                                        s.setDate(s.getDate() - 7);
+                                        startDate = s.toISOString();
+                                    } else if (selectedType === 'Monthly Overview') {
+                                        const s = new Date(now);
+                                        s.setDate(s.getDate() - 30);
+                                        startDate = s.toISOString();
+                                    } else {
+                                        // Custom Date Range
+                                        startDate = new Date(customFrom).toISOString();
+                                        endDate   = new Date(customTo).toISOString();
                                     }
-                                } catch (e) {
-                                     // Proceed with local fallback payload
-                                }
 
-                                const newReport = {
-                                    id: rId,
-                                    name: selectedType,
-                                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                                    risk: riskLevel,
-                                    riskPct: riskPercentage,
-                                    status: 'Just Generated'
-                                };
-                                setReportsData(prev => [newReport, ...prev]);
-                                generateReportPDF(newReport);
-                                setShowModal(false);
-                            }}>Generate</button>
+                                    let riskLevel = importSummary ? importSummary.risk_category : 'Low Risk';
+                                    let riskPercentage = importSummary ? parseFloat(importSummary.risk_score || 25).toFixed(1) : '25.0';
+                                    let rId = Date.now().toString();
+
+                                    try {
+                                        const res = await createReport({
+                                            user_id: uid,
+                                            report_type: selectedType,
+                                            start_date: startDate,
+                                            end_date: endDate,
+                                            health_data: [],
+                                            predicted_risk_score: importSummary ? (parseFloat(importSummary.risk_score || 25) / 100).toFixed(4) : 0.25,
+                                        });
+                                        if (res.data?.success) {
+                                            const r = res.data.data;
+                                            rId = r._id;
+                                            riskLevel = (r.predicted_risk_level || 'Low').charAt(0).toUpperCase() + (r.predicted_risk_level || 'Low').slice(1) + ' Risk';
+                                            if (r.predicted_risk_score != null) riskPercentage = (r.predicted_risk_score * 100).toFixed(1);
+                                        }
+                                    } catch (e) { /* fallback */ }
+
+                                    const newReport = {
+                                        id: rId,
+                                        name: selectedType,
+                                        date: now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                                        risk: riskLevel,
+                                        riskPct: riskPercentage,
+                                        status: 'Just Generated',
+                                        // carry through for the PDF
+                                        customFrom: selectedType === 'Custom Date Range' ? customFrom : null,
+                                        customTo:   selectedType === 'Custom Date Range' ? customTo   : null,
+                                    };
+                                    setReportsData(prev => [newReport, ...prev]);
+                                    generateReportPDF(newReport);
+                                    setGenerating(false);
+                                    setShowModal(false);
+                                }}
+                            >
+                                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                {generating ? 'Generating…' : 'Generate'}
+                            </button>
                         </div>
                     </div>
                 </div>

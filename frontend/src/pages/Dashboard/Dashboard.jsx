@@ -36,7 +36,7 @@ const CHART_COLORS = {
 function RiskRing({ score = 0, size = 180 }) {
     const pct = Math.max(0, Math.min(100, score));
     const color = pct >= 70 ? '#10b981' : pct >= 45 ? '#f59e0b' : '#ef4444';
-    const label = pct >= 70 ? 'Good' : pct >= 45 ? 'Fair' : 'Low';
+    const label = pct >= 70 ? 'Excellent' : pct >= 45 ? 'Fair' : 'Low';
     const glow = pct >= 70 ? 'rgba(16,185,129,0.5)' : pct >= 45 ? 'rgba(245,158,11,0.5)' : 'rgba(239,68,68,0.5)';
 
     const r = (size - 20) / 2;
@@ -69,7 +69,7 @@ function RiskRing({ score = 0, size = 180 }) {
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span className="text-3xl font-bold" style={{ color }}>{pct}</span>
                 <span className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>Health Score</span>
-                <span className="text-xs font-bold mt-0.5" style={{ color }}>{label}</span>
+                <span className="text-xs font-bold mt-0.5 uppercase tracking-wider" style={{ color }}>{label}</span>
             </div>
         </div>
     );
@@ -204,6 +204,7 @@ export default function Dashboard() {
         exercise: e.activity?.exerciseMinutes ?? null,
         mood: e.psychological?.moodScore ?? null,
         score: e.healthScore ?? null,
+        isAi: !!e.aiRisk,
     }));
 
     // Activity pie
@@ -339,8 +340,15 @@ export default function Dashboard() {
                 <div className="glass-card p-6 flex flex-col items-center gap-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between w-full mb-2">
                         <h2 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>Health Score</h2>
-                        <span className="text-xs px-3 py-1 rounded-full font-semibold"
-                            style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>Live</span>
+                        {latest.aiRisk ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse"
+                                style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)' }}>
+                                <Sparkles className="w-2.5 h-2.5" /> XGBOOST ENHANCED
+                            </span>
+                        ) : (
+                            <span className="text-xs px-3 py-1 rounded-full font-semibold"
+                                style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>Live</span>
+                        )}
                     </div>
                     <RiskRing score={latest.healthScore ?? 0} size={180} />
                     <div className="flex gap-3 w-full">

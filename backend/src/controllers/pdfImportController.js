@@ -418,4 +418,43 @@ const getAnalyticsSummary = async (req, res) => {
     }
 };
 
-module.exports = { importHealthPdf, getAnalyticsSummary };
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/reports/hr-records
+// Returns persisted HealthRecord rows for the current user, grouped by date.
+// Used by the Reports page to restore the Heart Rate Trend chart after navigation.
+// ─────────────────────────────────────────────────────────────────────────────
+const getHRRecords = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Fetch last 200 records sorted by date asc for charting
+        const records = await HealthRecord.find({ user_id: userId })
+            .sort({ date: 1, time: 1 })
+            .limit(200)
+            .lean();
+
+        if (!records.length) {
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // Group by date: take min hr_min and max hr_max per date for the chart
+        const byDate = {};
+        for (const r of records) {
+            if (!byDate[r.date]) {
+                byDate[r.date] = { label: r.date, hr_min: r.hr_min, hr_max: r.hr_max };
+            } else {
+                byDate[r.date].hr_min = Math.min(byDate[r.date].hr_min, r.hr_min);
+                byDate[r.date].hr_max = Math.max(byDate[r.date].hr_max, r.hr_max);
+            }
+        }
+
+        const chartData = Object.values(byDate).sort((a, b) => a.label.localeCompare(b.label));
+
+        return res.status(200).json({ success: true, data: chartData, total: records.length });
+    } catch (err) {
+        console.error('[getHRRecords]', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch HR records.' });
+    }
+};
+
+module.exports = { importHealthPdf, getAnalyticsSummary, getHRRecords };

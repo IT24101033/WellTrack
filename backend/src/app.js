@@ -19,6 +19,7 @@ const tipRoutes = require('./routes/tipRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const googleFitRoutes = require('./routes/googleFitRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const predictionRoutes = require('./routes/predictionRoutes');
 
 const { authenticate } = require('./middlewares/authMiddleware');
 const { getDashboard } = require('./controllers/reportController');
@@ -84,6 +85,7 @@ app.use('/api/tips', tipRoutes); // Lifestyle Tips
 app.use('/api/ai', aiRoutes);
 app.use('/api/google-fit', googleFitRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/predict', predictionRoutes);   // XGBoost ML service proxy
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) =>

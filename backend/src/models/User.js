@@ -43,6 +43,11 @@ const userSchema = new mongoose.Schema(
             minlength: [6, 'Password must be at least 6 characters.'],
             select: false, // never returned in queries by default
         },
+        username: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'Username must be at most 50 characters.'],
+        },
 
         // ── Role & status ──────────────────────────────────────────────────────
         role: {
@@ -78,6 +83,22 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
             maxlength: [50, 'University ID must be at most 50 characters.'],
+        },
+        dob: {
+            type: String,
+            default: '',
+        },
+        bloodGroup: {
+            type: String,
+            enum: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', ''],
+            trim: true,
+            default: '',
+        },
+        bio: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Bio must be at most 500 characters.'],
+            default: '',
         },
         profileImage: {
             type: String, // URL or filename

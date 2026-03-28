@@ -104,12 +104,14 @@ const getPersonalizedTips = async (req, res, next) => {
             is_active: true,
             target_type: { $in: targetTypes },
             created_by: { $ne: req.params.studentId }
-        }).limit(10);
+        })
+        .sort({ createdAt: -1 })
+        .limit(20);
 
         const scheduledTips = await LifestyleTip.find({
             is_active: true,
             created_by: req.params.studentId
-        });
+        }).sort({ createdAt: -1 });
 
         const tips = [...globalTips, ...scheduledTips];
 

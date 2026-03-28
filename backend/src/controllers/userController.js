@@ -236,7 +236,7 @@ const getProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
     try {
-        const { fullName, age, gender, height, weight, universityId, phone, phoneNumber } = req.body;
+        const { fullName, age, gender, height, weight, universityId, phone, phoneNumber, username, dob, bloodGroup, bio } = req.body;
 
         const allowedUpdates = {};
         if (fullName !== undefined) allowedUpdates.fullName = fullName;
@@ -245,6 +245,10 @@ const updateProfile = async (req, res) => {
         if (height !== undefined) allowedUpdates.height = Number(height);
         if (weight !== undefined) allowedUpdates.weight = Number(weight);
         if (universityId !== undefined) allowedUpdates.universityId = universityId;
+        if (username !== undefined) allowedUpdates.username = username;
+        if (dob !== undefined) allowedUpdates.dob = dob;
+        if (bloodGroup !== undefined) allowedUpdates.bloodGroup = bloodGroup;
+        if (bio !== undefined) allowedUpdates.bio = bio;
         
         const parsedPhone = phone !== undefined ? phone : phoneNumber;
         if (parsedPhone !== undefined) allowedUpdates.phoneNumber = parsedPhone;

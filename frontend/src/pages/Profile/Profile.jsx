@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Lock, AlertTriangle, Camera, Save, Eye, EyeOff, Loader2, CheckCircle2, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { changePassword, deleteProfile } from '../../services/userService';
+import { changePassword, deleteProfile, updateProfile } from '../../services/userService';
 import { useNavigate } from 'react-router-dom';
 
 const TABS = [
@@ -57,6 +57,7 @@ export default function Profile() {
     const [passError, setPassError] = useState('');
     const [confirmDelete, setConfirmDelete] = useState('');
     const fileRef = useRef();
+    const [selectedFile, setSelectedFile] = useState(null);
 
     const [form, setForm] = useState({
         fullName: user?.fullName ?? '',
@@ -81,6 +82,7 @@ export default function Profile() {
     const handleImageChange = e => {
         const file = e.target.files[0];
         if (!file) return;
+        setSelectedFile(file);
         const reader = new FileReader();
         reader.onload = ev => setF('avatarSrc', ev.target.result);
         reader.readAsDataURL(file);
@@ -88,11 +90,27 @@ export default function Profile() {
 
     const handleSave = async () => {
         setSaving(true);
-        await new Promise(r => setTimeout(r, 1200));
-        updateUser?.({ ...user, ...form });
-        setSavedMessage('Profile updated successfully!');
-        setSaving(false); setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        try {
+            const formData = new FormData();
+            Object.keys(form).forEach(k => {
+                if (k !== 'avatarSrc' && form[k] !== null && form[k] !== undefined) {
+                    formData.append(k, form[k]);
+                }
+            });
+            if (selectedFile) formData.append('profileImage', selectedFile);
+            
+            const res = await updateProfile(formData);
+            if (res.data?.success) {
+                updateUser?.(res.data.user);
+                setSavedMessage('Profile updated successfully!');
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handlePasswordUpdate = async () => {
@@ -220,9 +238,22 @@ export default function Profile() {
                                 <option value="other">Other</option>
                             </select>
                         </div>
-                        <GInput label="Height (cm)" type="number" value={form.height} onChange={e => setF('height', e.target.value)} placeholder="175" />
-                        <GInput label="Weight (kg)" type="number" value={form.weight} onChange={e => setF('weight', e.target.value)} placeholder="70" />
-                        <GInput label="Blood Group" value={form.bloodGroup} onChange={e => setF('bloodGroup', e.target.value)} placeholder="A+" />
+                        <GInput label="Height (cm)" type="number" min="0" step="0.1" value={form.height} onChange={e => { const v = e.target.value; if (v === '' || Number(v) >= 0) setF('height', v); }} placeholder="175" />
+                        <GInput label="Weight (kg)" type="number" min="0" step="0.1" value={form.weight} onChange={e => { const v = e.target.value; if (v === '' || Number(v) >= 0) setF('weight', v); }} placeholder="70" />
+                        <div>
+                            <label className="text-xs font-semibold mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Blood Group</label>
+                            <select className="glass-input" value={form.bloodGroup} onChange={e => setF('bloodGroup', e.target.value)}>
+                                <option value="">Select blood group</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
                         <label className="text-xs font-semibold mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Bio</label>

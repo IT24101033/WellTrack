@@ -15,6 +15,7 @@ export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
 
     const studentLinks = [
+        { name: 'Home Website', href: '/', icon: Activity },
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Health Input', href: '/health-input', icon: PlusCircle },
         { name: 'Risk Prediction', href: '/prediction', icon: Activity },
@@ -27,6 +28,7 @@ export function Sidebar() {
     ];
 
     const adminLinks = [
+        { name: 'Home Website', href: '/', icon: Activity },
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Manage Users', href: '/admin/users', icon: ShieldCheck },
         { name: 'Manage Tips', href: '/admin/tips', icon: Lightbulb },
@@ -64,7 +66,7 @@ export function Sidebar() {
                     }}
                 >
                     {/* Logo */}
-                    <div className={`flex items-center gap-3 px-4 py-5 ${collapsed ? 'justify-center' : ''}`}>
+                    <Link to="/" className={`flex items-center gap-3 px-4 py-5 hover:opacity-80 transition-opacity ${collapsed ? 'justify-center' : ''}`}>
                         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg flex-shrink-0">
                             <Activity className="w-4 h-4 text-white" />
                         </div>
@@ -73,7 +75,7 @@ export function Sidebar() {
                                 HealthPredict
                             </span>
                         )}
-                    </div>
+                    </Link>
 
                     {/* Divider */}
                     <div className="mx-4 mb-3" style={{ height: '1px', background: 'var(--glass-border)' }} />

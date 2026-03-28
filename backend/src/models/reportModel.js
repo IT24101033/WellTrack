@@ -20,8 +20,8 @@ const reportSchema = new mongoose.Schema(
     },
     report_type: {
       type: String,
-      enum: ['weekly', 'monthly'],
-      required: [true, 'report_type must be weekly or monthly'],
+      enum: ['weekly', 'monthly', 'custom'],
+      required: [true, 'report_type must be weekly, monthly, or custom'],
     },
     start_date: {
       type: Date,

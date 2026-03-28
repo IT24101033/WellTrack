@@ -81,19 +81,18 @@ const registerUser = async (req, res, next) => {
             email, 
             password, 
             role: role || 'student',
-            phoneNumber: phoneNumber || '' 
+            phoneNumber: phoneNumber || '',
+            activityLog: [{ action: 'registered', details: 'Account created' }]
         });
-        user.activityLog.push({ action: 'registered', details: 'Account created' });
-        await user.save();
 
         respondWithToken(res, user, 201);
     } catch (err) {
-        console.error('[registerUser]', err);
+        console.error('[registerUser] FATAL ERROR:', err.stack || err);
         if (err.name === 'ValidationError') {
             const msg = Object.values(err.errors).map((e) => e.message).join(' ');
             return res.status(400).json({ success: false, message: msg });
         }
-        res.status(500).json({ success: false, message: 'Server error during registration.' });
+        res.status(500).json({ success: false, message: `Server error during registration: ${err.message}` });
     }
 };
 
@@ -112,6 +111,8 @@ const sendAdminPin = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'Phone Number is required to send Admin PIN.' });
         }
 
+        console.log(`[sendAdminPin] Request for: ${email}, Phone: ${phoneNumber}`);
+
         // Check if an account with this email already exists
         const exists = await User.findOne({ email: email.toLowerCase() });
         if (exists) {
@@ -124,20 +125,43 @@ const sendAdminPin = async (req, res, next) => {
         
         // Delete any existing OTP for this email
         await Otp.deleteMany({ email: email.toLowerCase() });
-        
         await Otp.create({ email: email.toLowerCase(), otpHash });
         
         const message = `Your HealthPredict Admin Registration PIN is: ${pin}. It expires in 10 minutes.`;
         
-        // Send email
-        await sendEmail(email, 'Admin Registration PIN', message);
+        // Normalize phone number (Twilio requires E.164)
+        // For Sri Lanka: 07XXXXXXXX -> +947XXXXXXXX
+        let formattedPhone = phoneNumber.trim();
+        if (formattedPhone.startsWith('0') && formattedPhone.length === 10) {
+            formattedPhone = '+94' + formattedPhone.substring(1);
+        } else if (!formattedPhone.startsWith('+')) {
+            // Assume +94 if not provided
+            formattedPhone = '+94' + formattedPhone;
+        }
+
+        console.log(`[sendAdminPin] Sending to: Email=${email}, SMS=${formattedPhone}`);
+
+        // Send Email & SMS in parallel
+        const [emailSuccess, smsSuccess] = await Promise.all([
+            sendEmail(email, 'Admin Registration PIN', message),
+            sendSMS(formattedPhone, message)
+        ]);
         
-        // Send SMS
-        await sendSMS(phoneNumber, message);
-        
-        res.status(200).json({ success: true, message: 'PIN sent to email and SMS.' });
+        if (!emailSuccess && !smsSuccess) {
+            console.error(`[sendAdminPin] Both Email and SMS failed for ${email}`);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deliver PIN via Email or SMS. Please check your contact details or try again later.' 
+            });
+        }
+
+        let deliveryMsg = 'PIN sent successfully.';
+        if (!emailSuccess) deliveryMsg = 'PIN sent via SMS (Email delivery failed).';
+        if (!smsSuccess) deliveryMsg = 'PIN sent via Email (SMS delivery failed).';
+
+        res.status(200).json({ success: true, message: deliveryMsg });
     } catch (err) {
-        console.error('[sendAdminPin]', err);
+        console.error('[sendAdminPin] Critical Error:', err);
         next(err);
     }
 };
@@ -171,12 +195,14 @@ const loginUser = async (req, res) => {
         }
 
         user.activityLog.push({ action: 'login', details: 'Logged in' });
+        // Max log entries
+        if (user.activityLog.length > 50) user.activityLog = user.activityLog.slice(-50);
         await user.save();
 
         respondWithToken(res, user);
     } catch (err) {
-        console.error('[loginUser]', err);
-        res.status(500).json({ success: false, message: 'Server error during login.' });
+        console.error('[loginUser] FATAL ERROR:', err.stack || err);
+        res.status(500).json({ success: false, message: `Server error during login: ${err.message}` });
     }
 };
 

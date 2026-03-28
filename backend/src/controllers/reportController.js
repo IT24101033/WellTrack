@@ -337,6 +337,70 @@ const filterReports = async (req, res) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/reports/all?page=1&limit=20&search=...
+// Admin-only: list all reports across all users with joined user details.
+// ─────────────────────────────────────────────────────────────────────────────
+const adminGetAllReports = async (req, res) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page || '1', 10));
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20', 10)));
+        const skip = (page - 1) * limit;
+        const search = req.query.search || '';
+
+        const pipeline = [];
+
+        // 1. Join with users to pick up names for searching
+        pipeline.push({
+            $lookup: {
+                from: 'users',
+                localField: 'user_id',
+                foreignField: '_id',
+                as: 'user',
+            },
+        });
+        pipeline.push({ $unwind: '$user' });
+
+        // 2. Search filter (name or email)
+        if (search) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { 'user.fullName': { $regex: search, $options: 'i' } },
+                        { 'user.email': { $regex: search, $options: 'i' } },
+                    ],
+                },
+            });
+        }
+
+        // 3. Sorting & Pagination
+        pipeline.push({ $sort: { createdAt: -1 } });
+        
+        // Use facet for metadata + data in one pass
+        pipeline.push({
+            $facet: {
+                metadata: [{ $count: 'total' }],
+                data: [{ $skip: skip }, { $limit: limit }],
+            },
+        });
+
+        const [result] = await Report.aggregate(pipeline);
+
+        const reports = result.data;
+        const total = result.metadata[0]?.total || 0;
+
+        return ok(res, reports, 'All reports retrieved successfully.', 200, {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        });
+    } catch (err) {
+        console.error('[adminGetAllReports]', err);
+        return fail(res, 'Internal server error.', 500);
+    }
+};
+
 module.exports = {
     createReport,
     getUserReports,
@@ -345,4 +409,5 @@ module.exports = {
     deleteReport,
     getDashboard,
     filterReports,
+    adminGetAllReports,
 };

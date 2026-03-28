@@ -16,6 +16,7 @@ import AdminUsers from './pages/Admin/AdminUsers';
 import AdminTipsManagement from './pages/Admin/AdminTipsManagement';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminBroadcasts from './pages/Admin/AdminBroadcasts';
+import AdminReports from './pages/Admin/AdminReports';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -59,6 +60,11 @@ function App() {
                 <Route path="admin/broadcasts" element={
                     <ProtectedRoute adminOnly>
                         <AdminBroadcasts />
+                    </ProtectedRoute>
+                } />
+                <Route path="admin/reports" element={
+                    <ProtectedRoute adminOnly>
+                        <AdminReports />
                     </ProtectedRoute>
                 } />
             </Route>

@@ -111,17 +111,17 @@ const validateReportInput = (body) => {
         errors.push('user_id is required.');
     }
 
-    const validTypes = ['weekly', 'monthly'];
+    const validTypes = ['weekly', 'monthly', 'custom'];
     if (!body.report_type || !validTypes.includes(body.report_type)) {
         errors.push(`report_type must be one of: ${validTypes.join(', ')}.`);
     }
 
     if (!body.start_date || !isValidDate(body.start_date)) {
-        errors.push('start_date must be a valid date (YYYY-MM-DD).');
+        errors.push('start_date must be a valid date string.');
     }
 
     if (!body.end_date || !isValidDate(body.end_date)) {
-        errors.push('end_date must be a valid date (YYYY-MM-DD).');
+        errors.push('end_date must be a valid date string.');
     }
 
     if (
@@ -133,10 +133,9 @@ const validateReportInput = (body) => {
 
     if (
         !body.health_data ||
-        !Array.isArray(body.health_data) ||
-        body.health_data.length === 0
+        !Array.isArray(body.health_data)
     ) {
-        errors.push('health_data must be a non-empty array of health records.');
+        errors.push('health_data must be an array of health records.');
     }
 
     if (body.predicted_risk_score !== undefined) {
@@ -176,7 +175,7 @@ const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 const isValidDate = (str) => {
-    if (typeof str !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+    if (typeof str !== 'string' && !(str instanceof Date)) return false;
     return !isNaN(new Date(str).getTime());
 };
 

@@ -23,6 +23,7 @@ const {
     deleteReport,
     getDashboard,
     filterReports,
+    adminGetAllReports,
 } = require('../controllers/reportController');
 const { importHealthPdf, getAnalyticsSummary, getHRRecords } = require('../controllers/pdfImportController');
 
@@ -49,6 +50,7 @@ router.get('/hr-records', getHRRecords);  // GET persisted heart-rate records fo
 router.post('/', createReport);
 router.get('/filter', filterReports);          // MUST be before /:id
 router.get('/user/:userId', getUserReports);
+router.get('/all', authorizeAdmin, adminGetAllReports); // New Global Admin List
 router.get('/:id', getReportById);
 router.put('/:id', updateReport);
 router.delete('/:id', authorizeAdmin, deleteReport);

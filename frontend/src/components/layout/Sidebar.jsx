@@ -31,6 +31,7 @@ export function Sidebar() {
         { name: 'Home Website', href: '/', icon: Activity },
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Manage Users', href: '/admin/users', icon: ShieldCheck },
+        { name: 'Manage Reports', href: '/admin/reports', icon: FileText },
         { name: 'Manage Tips', href: '/admin/tips', icon: Lightbulb },
         { name: 'Broadcasts', href: '/admin/broadcasts', icon: Bell },
         { name: 'Profile', href: '/profile', icon: UserCircle },

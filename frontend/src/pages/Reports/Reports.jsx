@@ -130,14 +130,17 @@ export default function Reports() {
                 const repRes = await getUserReports(uid);
                 if (repRes.data?.success) {
                     const apiReps = repRes.data.data || [];
-                    const mapped = apiReps.map(r => ({
+                    const mapped = apiReps.map(r => {
+                        const rt = r.report_type;
+                        const readableName = rt === 'weekly' ? 'Weekly Summary' : rt === 'monthly' ? 'Monthly Overview' : rt === 'custom' ? 'Custom Date Range' : 'Health Report';
+                        return {
                         id: r._id,
-                        name: r.report_type || 'Health Report',
+                        name: readableName,
                         date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
                         risk: (r.predicted_risk_level || 'Low').charAt(0).toUpperCase() + (r.predicted_risk_level || 'Low').slice(1) + ' Risk',
                         riskPct: r.predicted_risk_score != null ? (r.predicted_risk_score * 100).toFixed(1) : 0,
                         status: 'Saved'
-                    }));
+                    }});
                     setReportsData(mapped);
                 }
 
@@ -681,9 +684,11 @@ export default function Reports() {
                                     let rId = Date.now().toString();
 
                                     try {
+                                        const apiReportType = selectedType === 'Weekly Summary' ? 'weekly' : selectedType === 'Monthly Overview' ? 'monthly' : 'custom';
+                                        
                                         const res = await createReport({
                                             user_id: uid,
-                                            report_type: selectedType,
+                                            report_type: apiReportType,
                                             start_date: startDate,
                                             end_date: endDate,
                                             health_data: [],

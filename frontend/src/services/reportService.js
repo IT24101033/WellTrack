@@ -11,3 +11,9 @@ export const createReport = (data) =>
 
 export const getAnalyticsSummary = () =>
     api.get('/reports/analytics-summary');
+
+export const getAllReports = (page = 1, limit = 20, search = '') =>
+    api.get(`/reports/all?page=${page}&limit=${limit}&search=${search}`);
+
+export const deleteReport = (id) =>
+    api.delete(`/reports/${id}`);

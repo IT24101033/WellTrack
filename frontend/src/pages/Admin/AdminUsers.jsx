@@ -117,7 +117,7 @@ export default function AdminUsers() {
                                             <td className="px-4 py-3.5">
                                                 <div className="flex items-center gap-3">
                                                     {u.profileImage
-                                                        ? <img src={`http://localhost:5000${u.profileImage}`} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-gray-100" />
+                                                        ? <img src={`http://localhost:5001${u.profileImage}`} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-gray-100" />
                                                         : <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">{initials}</div>
                                                     }
                                                     <div>

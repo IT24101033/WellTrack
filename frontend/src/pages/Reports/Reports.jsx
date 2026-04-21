@@ -11,7 +11,7 @@ import { getUserReports, getUserDashboard, createReport } from '../../services/r
 import { fetchHealthEntries } from '../../services/healthService';
 import { useAuth } from '../../context/AuthContext';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 const GlassTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;

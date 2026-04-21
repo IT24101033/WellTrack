@@ -3,7 +3,7 @@ import { Users, FileText, Crown, Activity, Calendar, ShieldCheck } from 'lucide-
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 const COLORS = {
     high: '#ef4444',

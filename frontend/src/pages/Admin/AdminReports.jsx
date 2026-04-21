@@ -117,7 +117,7 @@ export default function AdminReports() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {u.profileImage
-                                                        ? <img src={`http://localhost:5000${u.profileImage}`} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                                                        ? <img src={`http://localhost:5001${u.profileImage}`} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm" />
                                                         : <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">{initials}</div>
                                                     }
                                                     <div>

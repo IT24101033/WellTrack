@@ -191,7 +191,7 @@ export default function GoogleFitSync() {
             setSyncState(s => ({ ...s, progress: 95, status: 'Encrypting and saving to Secure Cloud...' }));
 
             // 3. Save to Backend
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/google-fit/sync`, {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/google-fit/sync`, {
                 entries: syncPayload
             }, {
                 headers: { Authorization: `Bearer ${appToken}` }

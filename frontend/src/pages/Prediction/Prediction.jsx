@@ -7,7 +7,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const getAuthHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('healthPredict_token')}` });

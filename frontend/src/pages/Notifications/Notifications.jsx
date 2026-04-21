@@ -404,7 +404,7 @@ export default function Notifications() {
 
     const loadSub = useCallback(async () => {
         try {
-            const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/subscription', {
+            const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscription', {
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
             });
             const d = await r.json();
@@ -414,7 +414,7 @@ export default function Notifications() {
 
     const loadPrefs = useCallback(async () => {
         try {
-            const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/preferences', {
+            const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/preferences', {
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
             });
             const d = await r.json();
@@ -448,7 +448,7 @@ export default function Notifications() {
     };
 
     const cancelPlan = async () => {
-        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
         const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
         const r = await fetch(BASE + '/subscription', { method: 'DELETE', headers: hdrs });
         const d = await r.json();
@@ -457,7 +457,7 @@ export default function Notifications() {
 
     /* called after payment success */
     const upgradePlan = async (planName) => {
-        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
         const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
         const r = await fetch(BASE + '/subscription', { method: 'PUT', headers: hdrs, body: JSON.stringify({ planName }) });
         const d = await r.json();
@@ -466,7 +466,7 @@ export default function Notifications() {
 
     const savePrefs = async () => {
         setPrefSaving(true);
-        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
         const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
         const body = { ...prefsTmp };
         delete body._id; delete body.userId; delete body.__v;

@@ -284,7 +284,7 @@ function HealthTipsDashboardInner() {
     useEffect(() => {
         const loadSub = async () => {
             try {
-                const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/subscription', {
+                const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscription', {
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
                 });
                 const d = await r.json();

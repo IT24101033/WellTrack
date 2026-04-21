@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 const MAX_MB = 10;
 const MAX_BYTES = MAX_MB * 1024 * 1024;
 

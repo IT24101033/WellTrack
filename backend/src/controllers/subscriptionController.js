@@ -29,7 +29,7 @@ const getSubscription = async (req, res) => {
 // PUT /api/subscription  — upgrade / change plan
 const updateSubscription = async (req, res) => {
     try {
-        const { planName, autoRenew } = req.body;
+        const { planName, autoRenew, paymentMethod } = req.body;
         const validPlans = ['Free', 'Premium', 'Pro'];
         if (planName && !validPlans.includes(planName)) {
             return fail(res, `Invalid plan. Must be one of: ${validPlans.join(', ')}.`, 400);
@@ -51,6 +51,17 @@ const updateSubscription = async (req, res) => {
             updateData.endDate = end;
         }
         if (typeof autoRenew === 'boolean') updateData.autoRenew = autoRenew;
+
+        if (paymentMethod) {
+            updateData.paymentMethod = paymentMethod;
+        } else if (planName === 'Free') {
+            updateData.paymentMethod = 'free';
+        }
+
+        if (req.file) {
+            updateData.receiptUrl = `/uploads/${req.file.filename}`;
+            if (!paymentMethod) updateData.paymentMethod = 'receipt';
+        }
 
         const subscription = await Subscription.findOneAndUpdate(
             { userId: req.user.id },

@@ -20,7 +20,8 @@ const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
     filename: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
-        const uniqueName = `avatar_${Date.now()}_${Math.round(Math.random() * 1e6)}${ext}`;
+        const prefix = file.fieldname === 'receipt' ? 'receipt' : 'avatar';
+        const uniqueName = `${prefix}_${Date.now()}_${Math.round(Math.random() * 1e6)}${ext}`;
         cb(null, uniqueName);
     },
 });

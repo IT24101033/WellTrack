@@ -6,12 +6,13 @@ const { authenticate } = require('../middlewares/authMiddleware');
 
 const { getSubscription, updateSubscription, cancelSubscription } = require('../controllers/subscriptionController');
 const { getPreferences, updatePreferences } = require('../controllers/preferenceController');
+const upload = require('../middlewares/uploadMiddleware');
 
 router.use(authenticate);
 
 // Subscription
 router.get('/subscription', getSubscription);
-router.put('/subscription', updateSubscription);
+router.put('/subscription', upload.single('receipt'), updateSubscription);
 router.delete('/subscription', cancelSubscription);
 
 // Preferences

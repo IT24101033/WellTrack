@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Bell, Pill, Calendar, Heart, Settings, Trash2, Check,
-    Sun, Moon, Star, X, CreditCard, Lock, Loader,
+    Sun, Moon, Star, X, CreditCard, Lock, Loader, UploadCloud
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -53,28 +53,62 @@ function Toggle({ value, onChange }) {
 
 /* ─── Payment Modal ──────────────────────────────────────────── */
 function PaymentModal({ plan, onClose, onSuccess }) {
+    const [method, setMethod] = useState('card'); // 'card' | 'receipt'
+    
+    // Card state
     const [name, setName] = useState('');
     const [card, setCard] = useState('');
     const [exp, setExp] = useState('');
     const [cvv, setCvv] = useState('');
     const [flip, setFlip] = useState(false);
+    
+    // Receipt state
+    const [receiptFile, setReceiptFile] = useState(null);
+    const [preview, setPreview] = useState(null);
+    
     const [status, setStatus] = useState('idle'); // idle | processing | success | error
 
     const amount = PLAN_AMOUNTS[plan];
     const masked = card ? card.padEnd(19, ' ').replace(/\d(?=.{4})/g, '•') : '•••• •••• •••• ••••';
     const displayName = name || 'CARDHOLDER NAME';
 
-    const handlePay = async () => {
-        if (!name || card.replace(/\s/g, '').length < 16 || exp.length < 5 || cvv.length < 3) {
-            setStatus('error'); return;
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setReceiptFile(file);
+            setPreview(URL.createObjectURL(file));
         }
+    };
+
+    const handlePay = async () => {
+        if (method === 'card') {
+            if (!name || card.replace(/\s/g, '').length < 16 || exp.length < 5 || cvv.length < 3) {
+                setStatus('error'); return;
+            }
+        } else {
+            if (!receiptFile) {
+                setStatus('error'); return;
+            }
+        }
+
         setStatus('processing');
-        // simulate 2.4 s payment delay
-        await new Promise(r => setTimeout(r, 2400));
-        setStatus('success');
-        await new Promise(r => setTimeout(r, 1600));
-        onSuccess(plan);
-        onClose();
+        if (method === 'card') {
+            // simulate 2.4 s payment delay
+            await new Promise(r => setTimeout(r, 2400));
+        }
+
+        const ok = await onSuccess(plan, { 
+            method, 
+            file: method === 'receipt' ? receiptFile : null 
+        });
+
+        if (ok) {
+            setStatus('success');
+            await new Promise(r => setTimeout(r, 1600));
+            onClose();
+        } else {
+            setStatus('error');
+        }
     };
 
     return (
@@ -93,110 +127,158 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                     </div>
                 </div>
 
-                {/* Credit card preview */}
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 24px 0' }}>
-                    <div
-                        style={{
-                            width: 320, height: 185, borderRadius: 18, position: 'relative', cursor: 'pointer',
-                            background: flip
-                                ? 'linear-gradient(135deg,#1E293B,#374151)'
-                                : 'linear-gradient(135deg,#1E3A6E,#2563EB,#7C3AED)',
-                            boxShadow: '0 20px 60px rgba(37,99,235,0.4)',
-                            transition: 'transform .6s',
-                            transform: flip ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                            transformStyle: 'preserve-3d',
-                            fontFamily: 'monospace',
-                        }}
-                        onClick={() => setFlip(!flip)}
-                    >
-                        {/* Front */}
-                        <div style={{ position: 'absolute', inset: 0, padding: 22, backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <CreditCard size={32} style={{ color: 'rgba(255,255,255,0.8)' }} />
-                                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif' }}>HealthPay</div>
-                            </div>
-                            {/* Chip */}
-                            <div style={{ width: 42, height: 32, borderRadius: 6, background: 'linear-gradient(135deg,#D4A843,#F0C040)', boxShadow: 'inset 0 0 6px rgba(0,0,0,0.3)' }} />
-                            <div>
-                                <div style={{ fontSize: 18, letterSpacing: 3, color: '#fff', marginBottom: 14 }}>{masked}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <div>
-                                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>CARD HOLDER</div>
-                                        <div style={{ fontSize: 12, color: '#fff', letterSpacing: 1 }}>{displayName.toUpperCase().slice(0, 22)}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>EXPIRES</div>
-                                        <div style={{ fontSize: 12, color: '#fff' }}>{exp || 'MM/YY'}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Back */}
-                        <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <div style={{ background: '#1a1a2e', height: 44, margin: '0 0 16px' }} />
-                                <div style={{ margin: '0 22px', background: 'rgba(255,255,255,0.1)', borderRadius: 6, padding: '8px 14px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-                                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif' }}>CVV</div>
-                                    <div style={{ fontSize: 14, color: '#fff', letterSpacing: 4 }}>{cvv ? '•'.repeat(cvv.length) : '•••'}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {/* Method Tabs */}
+                <div style={{ display: 'flex', padding: '16px 24px 0', gap: 12 }}>
+                    <button onClick={() => setMethod('card')} style={{ flex: 1, padding: '10px 0', background: method === 'card' ? 'rgba(59,130,246,0.15)' : 'transparent', border: '1px solid ' + (method === 'card' ? '#3B82F6' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'card' ? '#3B82F6' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s' }}>
+                        <CreditCard size={15} /> Card (Demo)
+                    </button>
+                    <button onClick={() => setMethod('receipt')} style={{ flex: 1, padding: '10px 0', background: method === 'receipt' ? 'rgba(16,185,129,0.15)' : 'transparent', border: '1px solid ' + (method === 'receipt' ? '#10B981' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'receipt' ? '#10B981' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s' }}>
+                        <UploadCloud size={15} /> Bank Transfer
+                    </button>
                 </div>
-                <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(148,163,184,0.6)', paddingTop: 6 }}>Click card to flip</div>
 
-                {/* Form */}
-                <div style={{ padding: '16px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Content */}
+                {method === 'card' ? (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 24px 0' }}>
+                            <div
+                                style={{
+                                    width: 320, height: 185, borderRadius: 18, position: 'relative', cursor: 'pointer',
+                                    background: flip
+                                        ? 'linear-gradient(135deg,#1E293B,#374151)'
+                                        : 'linear-gradient(135deg,#1E3A6E,#2563EB,#7C3AED)',
+                                    boxShadow: '0 20px 60px rgba(37,99,235,0.4)',
+                                    transition: 'transform .6s',
+                                    transform: flip ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                                    transformStyle: 'preserve-3d',
+                                    fontFamily: 'monospace',
+                                }}
+                                onClick={() => setFlip(!flip)}
+                            >
+                                {/* Front */}
+                                <div style={{ position: 'absolute', inset: 0, padding: 22, backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <CreditCard size={32} style={{ color: 'rgba(255,255,255,0.8)' }} />
+                                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif' }}>HealthPay</div>
+                                    </div>
+                                    {/* Chip */}
+                                    <div style={{ width: 42, height: 32, borderRadius: 6, background: 'linear-gradient(135deg,#D4A843,#F0C040)', boxShadow: 'inset 0 0 6px rgba(0,0,0,0.3)' }} />
+                                    <div>
+                                        <div style={{ fontSize: 18, letterSpacing: 3, color: '#fff', marginBottom: 14 }}>{masked}</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <div>
+                                                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>CARD HOLDER</div>
+                                                <div style={{ fontSize: 12, color: '#fff', letterSpacing: 1 }}>{displayName.toUpperCase().slice(0, 22)}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>EXPIRES</div>
+                                                <div style={{ fontSize: 12, color: '#fff' }}>{exp || 'MM/YY'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Back */}
+                                <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <div style={{ background: '#1a1a2e', height: 44, margin: '0 0 16px' }} />
+                                        <div style={{ margin: '0 22px', background: 'rgba(255,255,255,0.1)', borderRadius: 6, padding: '8px 14px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif' }}>CVV</div>
+                                            <div style={{ fontSize: 14, color: '#fff', letterSpacing: 4 }}>{cvv ? '•'.repeat(cvv.length) : '•••'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(148,163,184,0.6)', paddingTop: 6 }}>Click card to flip</div>
 
-                    {/* Cardholder */}
-                    <div>
-                        <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>CARDHOLDER NAME</label>
-                        <input value={name} onChange={e => setName(e.target.value)} placeholder="John Doe"
-                            style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
+                        {/* Form */}
+                        <div style={{ padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* Cardholder */}
+                            <div>
+                                <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>CARDHOLDER NAME</label>
+                                <input value={name} onChange={e => setName(e.target.value)} placeholder="John Doe"
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
 
-                    {/* Card number */}
-                    <div>
-                        <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>CARD NUMBER</label>
-                        <div style={{ position: 'relative' }}>
-                            <input value={card} onChange={e => setCard(fmtCard(e.target.value))} placeholder="1234 5678 9012 3456" maxLength={19}
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px 10px 40px', color: '#F1F5F9', fontSize: 14, outline: 'none', letterSpacing: 2, boxSizing: 'border-box' }} />
-                            <CreditCard size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                            {/* Card number */}
+                            <div>
+                                <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>CARD NUMBER</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input value={card} onChange={e => setCard(fmtCard(e.target.value))} placeholder="1234 5678 9012 3456" maxLength={19}
+                                        style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px 10px 40px', color: '#F1F5F9', fontSize: 14, outline: 'none', letterSpacing: 2, boxSizing: 'border-box' }} />
+                                    <CreditCard size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                                </div>
+                            </div>
+
+                            {/* Expiry + CVV */}
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>EXPIRY DATE</label>
+                                    <input value={exp} onChange={e => setExp(fmtExp(e.target.value))} placeholder="MM/YY" maxLength={5}
+                                        style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>CVV</label>
+                                    <input
+                                        value={cvv}
+                                        onChange={e => { setCvv(e.target.value.replace(/\D/g, '').slice(0, 4)); }}
+                                        onFocus={() => setFlip(true)} onBlur={() => setFlip(false)}
+                                        placeholder="•••" maxLength={4} type="password"
+                                        style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 16 }}>
+                            <div style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginBottom: 8, letterSpacing: 1 }}>BANK DETAILS</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#F1F5F9', marginBottom: 4 }}>
+                                <span style={{ color: '#94A3B8' }}>Bank</span> <span>HealthyBank Ltd.</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#F1F5F9', marginBottom: 4 }}>
+                                <span style={{ color: '#94A3B8' }}>Account</span> <span style={{ fontFamily: 'monospace', letterSpacing: 1 }}>100-200-3000</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#F1F5F9' }}>
+                                <span style={{ color: '#94A3B8' }}>Branch</span> <span>Colombo Main</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 6, display: 'block' }}>UPLOAD DEPOSIT SLIP / RECEIPT</label>
+                            <label style={{ border: '2px dashed ' + (receiptFile ? '#10B981' : 'rgba(255,255,255,0.15)'), borderRadius: 12, background: 'rgba(255,255,255,0.02)', padding: preview ? 6 : 24, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' }}>
+                                {preview ? (
+                                    <div style={{ position: 'relative', width: '100%', height: 140 }}>
+                                        <img src={preview} alt="Receipt Preview" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 8 }} />
+                                        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 20, fontSize: 11, color: '#fff' }}>Change Photo</div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <UploadCloud size={32} style={{ color: '#94A3B8', marginBottom: 8 }} />
+                                        <div style={{ fontSize: 13, color: '#F1F5F9' }}>Click to browse your files</div>
+                                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>JPG, PNG or PDF (Max 3MB)</div>
+                                    </>
+                                )}
+                                <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ display: 'none' }} />
+                            </label>
                         </div>
                     </div>
+                )}
 
-                    {/* Expiry + CVV */}
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>EXPIRY DATE</label>
-                            <input value={exp} onChange={e => setExp(fmtExp(e.target.value))} placeholder="MM/YY" maxLength={5}
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, display: 'block' }}>CVV</label>
-                            <input
-                                value={cvv}
-                                onChange={e => { setCvv(e.target.value.replace(/\D/g, '').slice(0, 4)); }}
-                                onFocus={() => setFlip(true)} onBlur={() => setFlip(false)}
-                                placeholder="•••" maxLength={4} type="password"
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                        </div>
-                    </div>
-
-                    {/* Error hint */}
+                {/* Error & Pay Action */}
+                <div style={{ padding: '0 24px 24px' }}>
                     {status === 'error' && (
-                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#EF4444' }}>
-                            Please fill in all fields correctly.
+                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#EF4444', marginBottom: 16 }}>
+                            {method === 'card' ? 'Please fill in all card details correctly.' : 'Please upload your receipt to proceed.'}
                         </div>
                     )}
 
-                    {/* Pay button */}
                     <button
                         onClick={handlePay}
                         disabled={status === 'processing' || status === 'success'}
                         style={{
                             width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', cursor: status === 'processing' || status === 'success' ? 'default' : 'pointer',
-                            background: status === 'success' ? 'linear-gradient(135deg,#10B981,#059669)' : 'linear-gradient(135deg,#3B82F6,#7C3AED)',
+                            background: status === 'success' ? 'linear-gradient(135deg,#10B981,#059669)' : (method === 'card' ? 'linear-gradient(135deg,#3B82F6,#7C3AED)' : 'linear-gradient(135deg,#10B981,#059669)'),
                             color: '#fff', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                             transition: 'opacity .2s,background .4s',
                             opacity: status === 'processing' ? 0.85 : 1,
@@ -205,14 +287,14 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                         {status === 'processing' ? (
                             <><Loader size={17} style={{ animation: 'spin 0.8s linear infinite' }} /> Processing…</>
                         ) : status === 'success' ? (
-                            <><Check size={17} /> Payment Successful!</>
+                            <><Check size={17} /> Upgrade Successful!</>
                         ) : (
-                            <><Lock size={15} /> Pay {PLAN_PRICES[plan]}/mo</>
+                            <><Lock size={15} /> {method === 'card' ? 'Pay' : 'Confirm'} {PLAN_PRICES[plan]}/mo</>
                         )}
                     </button>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'rgba(148,163,184,0.5)' }}>
-                        <Lock size={10} /> 256-bit SSL encrypted · Simulated payment only
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'rgba(148,163,184,0.5)', marginTop: 12 }}>
+                        <Lock size={10} /> 256-bit SSL encrypted · {method === 'card' ? 'Simulated payment' : 'Secure upload'}
                     </div>
                 </div>
 
@@ -456,12 +538,32 @@ export default function Notifications() {
     };
 
     /* called after payment success */
-    const upgradePlan = async (planName) => {
+    const upgradePlan = async (planName, paymentData = {}) => {
         const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-        const hdrs = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
-        const r = await fetch(BASE + '/subscription', { method: 'PUT', headers: hdrs, body: JSON.stringify({ planName }) });
+        
+        let body;
+        let headers = { Authorization: 'Bearer ' + token };
+
+        if (paymentData.method === 'receipt' && paymentData.file) {
+            body = new FormData();
+            body.append('planName', planName);
+            body.append('paymentMethod', 'receipt');
+            body.append('receipt', paymentData.file);
+        } else {
+            headers['Content-Type'] = 'application/json';
+            body = JSON.stringify({ 
+                planName, 
+                paymentMethod: paymentData.method || 'card' 
+            });
+        }
+
+        const r = await fetch(BASE + '/subscription', { method: 'PUT', headers, body });
         const d = await r.json();
-        if (d.success) setSubscription(d.subscription);
+        if (d.success) {
+            setSubscription(d.subscription);
+            return true;
+        }
+        return false;
     };
 
     const savePrefs = async () => {

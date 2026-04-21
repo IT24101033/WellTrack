@@ -39,6 +39,15 @@ const subscriptionSchema = new mongoose.Schema(
             enum: ['active', 'cancelled', 'expired'],
             default: 'active',
         },
+        paymentMethod: {
+            type: String,
+            enum: ['card', 'receipt', 'free'],
+            default: 'free',
+        },
+        receiptUrl: {
+            type: String,
+            default: null,
+        },
         features: {
             type: [String],
             default: function () {

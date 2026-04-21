@@ -116,6 +116,17 @@ export default function Profile() {
     const handlePasswordUpdate = async () => {
         setSaving(true);
         setPassError('');
+
+        const hasLetter = /[a-zA-Z]/.test(passForm.next);
+        const hasNumber = /\d/.test(passForm.next);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(passForm.next);
+        
+        if (passForm.next.length < 6 || !hasLetter || !hasNumber || !hasSymbol) {
+            setPassError('Password must be at least 6 characters and contain letters, numbers, and symbols.');
+            setSaving(false);
+            return;
+        }
+
         try {
             await changePassword({
                 currentPassword: passForm.current,

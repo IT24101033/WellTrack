@@ -50,8 +50,12 @@ const registerUser = async (req, res, next) => {
         if (password !== confirmPassword) {
             return res.status(400).json({ success: false, message: 'Passwords do not match.' });
         }
-        if (password.length < 6) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(password);
+        
+        if (password.length < 6 || !hasLetter || !hasNumber || !hasSymbol) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters and contain letters, numbers, and symbols.' });
         }
 
         const exists = await User.findOne({ email: email.toLowerCase() });
@@ -294,8 +298,12 @@ const changePassword = async (req, res) => {
         if (newPassword !== confirmPassword) {
             return res.status(400).json({ success: false, message: 'New passwords do not match.' });
         }
-        if (newPassword.length < 6) {
-            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+        const hasLetter = /[a-zA-Z]/.test(newPassword);
+        const hasNumber = /\d/.test(newPassword);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(newPassword);
+        
+        if (newPassword.length < 6 || !hasLetter || !hasNumber || !hasSymbol) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters and contain letters, numbers, and symbols.' });
         }
 
         const user = await User.findById(req.user.id).select('+password');

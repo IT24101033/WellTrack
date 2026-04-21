@@ -45,6 +45,16 @@ export default function Register() {
             setError('Please fill in all fields.');
             return;
         }
+
+        const hasLetter = /[a-zA-Z]/.test(form.password);
+        const hasNumber = /\d/.test(form.password);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(form.password);
+        
+        if (form.password.length < 6 || !hasLetter || !hasNumber || !hasSymbol) {
+            setError('Password must be at least 6 characters and contain letters, numbers, and symbols.');
+            return;
+        }
+
         if (form.password !== form.confirmPassword) {
             setError('Passwords do not match.');
             return;

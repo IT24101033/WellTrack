@@ -47,8 +47,26 @@ const createTip = async (req, res, next) => {
 // GET /api/tips
 const getAllTips = async (req, res, next) => {
     try {
+        const WellnessTip = require('../models/WellnessTip');
         const tips = await LifestyleTip.find({ is_active: true }).sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: tips });
+        const wellnessTips = await WellnessTip.find({ status: 'approved' }).sort({ createdAt: -1 });
+        
+        const normalizedWellness = wellnessTips.map(t => ({
+            _id: t._id,
+            title: t.title,
+            description: t.description,
+            category: t.category.toUpperCase(),
+            recommended_time: t.time || '',
+            difficulty_level: 'MEDIUM',
+            target_type: 'GENERAL',
+            is_active: true,
+            createdAt: t.createdAt
+        }));
+
+        const combined = [...tips, ...normalizedWellness];
+        combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.status(200).json({ success: true, data: combined });
     } catch (error) {
         next(error);
     }
@@ -70,9 +88,27 @@ const getTipById = async (req, res, next) => {
 // GET /api/tips/category/:category
 const getTipsByCategory = async (req, res, next) => {
     try {
+        const WellnessTip = require('../models/WellnessTip');
         const { category } = req.params;
-        const tips = await LifestyleTip.find({ category: category.toUpperCase(), is_active: true });
-        res.status(200).json({ success: true, data: tips });
+        const lifestyleTips = await LifestyleTip.find({ category: category.toUpperCase(), is_active: true });
+        const wellnessTips = await WellnessTip.find({ category: category.toLowerCase(), status: 'approved' });
+
+        const normalizedWellness = wellnessTips.map(t => ({
+            _id: t._id,
+            title: t.title,
+            description: t.description,
+            category: t.category.toUpperCase(),
+            recommended_time: t.time || '',
+            difficulty_level: 'MEDIUM',
+            target_type: 'GENERAL',
+            is_active: true,
+            createdAt: t.createdAt
+        }));
+
+        const combined = [...lifestyleTips, ...normalizedWellness];
+        combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.status(200).json({ success: true, data: combined });
     } catch (error) {
         next(error);
     }
@@ -82,40 +118,53 @@ const getTipsByCategory = async (req, res, next) => {
 const getPersonalizedTips = async (req, res, next) => {
     try {
         const StudentHealth = require('../models/studentHealthModel');
+        const WellnessTip = require('../models/WellnessTip');
         const latestHealth = await StudentHealth.findOne({ userId: req.params.studentId }).sort({ assessmentDate: -1 });
 
-        let targetTypes = ['GENERAL'];
-
-        if (latestHealth) {
-            if (latestHealth.sleepHours < 6) {
-                targetTypes.push('SLEEP');
-            }
-            if (latestHealth.stressLevel === 'High' || latestHealth.stressLevel === 'Critical' || latestHealth.stressScore > 7) {
-                targetTypes.push('STRESS');
-            }
-            if (latestHealth.physicalActivityLevel === 'Low' || latestHealth.physicalActivityScore < 4) {
-                targetTypes.push('FITNESS');
-            }
-        } else {
-            targetTypes = ['GENERAL', 'SLEEP', 'STRESS', 'FITNESS'];
-        }
-
-        const globalTips = await LifestyleTip.find({
+        const targetTypes = ['GENERAL', 'SLEEP', 'STRESS', 'FITNESS'];
+        
+        // Fetch from LifestyleTip collection
+        const lifestyleTips = await LifestyleTip.find({
             is_active: true,
-            target_type: { $in: targetTypes },
-            created_by: { $ne: req.params.studentId }
+            target_type: { $in: targetTypes }
         })
         .sort({ createdAt: -1 })
-        .limit(20);
+        .limit(30);
 
+        // Fetch from WellnessTip collection (Admin additions)
+        const wellnessTips = await WellnessTip.find({
+            status: 'approved'
+        }).sort({ createdAt: -1 }).limit(30);
+
+        // Normalize wellness tips to lifestyle tips format for frontend compatibility
+        const normalizedWellness = wellnessTips.map(t => ({
+            _id: t._id,
+            title: t.title,
+            description: t.description,
+            category: t.category.toUpperCase(),
+            recommended_time: t.time || '',
+            difficulty_level: 'MEDIUM',
+            target_type: 'GENERAL',
+            is_active: true,
+            createdAt: t.createdAt
+        }));
+
+        // Tips the user added themselves
         const scheduledTips = await LifestyleTip.find({
             is_active: true,
             created_by: req.params.studentId
         }).sort({ createdAt: -1 });
 
-        const tips = [...globalTips, ...scheduledTips];
+        // Combine and de-duplicate by title (or original ID)
+        const combined = [...lifestyleTips, ...normalizedWellness, ...scheduledTips];
+        
+        // Use title as a fallback key if needed, but _id is better
+        const uniqueTips = Array.from(new Map(combined.map(item => [item.title, item])).values());
 
-        res.status(200).json({ success: true, data: tips });
+        // Sort by newest first
+        uniqueTips.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.status(200).json({ success: true, data: uniqueTips });
     } catch (error) {
         console.error("Personalization error:", error);
         next(error);

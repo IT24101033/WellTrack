@@ -25,7 +25,7 @@ function AIHealthInsights({ onAddAiPlan, subscriptionPlan }) {
             setAiError(
                 <span>
                     AI Health Insights require a Premium or Pro subscription.{' '}
-                    <a href="/notifications" style={{ textDecoration: 'underline', color: 'inherit', fontWeight: 'bold' }}>
+                    <a href="/subscription" style={{ textDecoration: 'underline', color: 'inherit', fontWeight: 'bold' }}>
                         Upgrade here
                     </a>
                 </span>
@@ -383,6 +383,41 @@ function HealthTipsDashboardInner() {
 
             {/* AI Health Insights */}
             <AIHealthInsights onAddAiPlan={handleAddAiPlanToSchedule} subscriptionPlan={subscriptionPlan} />
+
+            {/* Featured Plans (Always Visible) */}
+            <div className="mb-10">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                        <Zap className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Featured Wellness Plans</h2>
+                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Expert-curated regimens to kickstart your journey.</p>
+                    </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[
+                        { title: 'The 7-Day Detox', cat: 'DIET', icon: Utensils, color: 'emerald', img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=400&auto=format&fit=crop' },
+                        { title: 'Morning Mobility', cat: 'WORKOUT', icon: Dumbbell, color: 'orange', img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=400&auto=format&fit=crop' },
+                        { title: 'Sleep Optimization', cat: 'MENTAL', icon: Brain, color: 'purple', img: 'https://images.unsplash.com/photo-1541480601022-2308c0f02487?q=80&w=400&auto=format&fit=crop' }
+                    ].map(plan => (
+                        <div key={plan.title} className="group relative h-48 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer border border-white/10">
+                            <img src={plan.img} alt={plan.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            <div className="absolute bottom-0 left-0 right-0 p-5">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-white mb-2 inline-block bg-${plan.color}-500/50 backdrop-blur-sm`}>
+                                    {plan.cat}
+                                </span>
+                                <h3 className="text-white font-bold text-lg">{plan.title}</h3>
+                                <div className="flex items-center gap-2 mt-1 text-white/70 text-[10px]">
+                                    <Clock size={10} /> 15 mins/day · 🔥 Intermediate
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

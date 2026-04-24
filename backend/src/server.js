@@ -15,6 +15,10 @@ const port = parseInt(process.env.PORT || '5000', 10);
     // Start background reminder scheduler
     startReminderScheduler();
 
+    // Seed default health plans
+    const { seedPlans } = require('./utils/seedUtils');
+    await seedPlans();
+
     const server = app.listen(port, () => {
         console.log(`🚀  Server running on http://localhost:${port}  [${process.env.NODE_ENV || 'development'}]`);
     });

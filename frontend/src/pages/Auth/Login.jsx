@@ -12,6 +12,7 @@ export default function Login() {
 
     const [form, setForm] = useState({ email: '', password: '' });
     const [showPw, setShowPw] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -29,7 +30,7 @@ export default function Login() {
         try {
             setLoading(true);
             const res = await loginApi(form);
-            login(res.data.user, res.data.token);
+            login(res.data.user, res.data.token, rememberMe);
             navigate(from, { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
@@ -94,6 +95,20 @@ export default function Login() {
                                         {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* Remember Me Checkbox */}
+                            <div className="flex items-center justify-between mt-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={rememberMe}
+                                        onChange={(e) => setRememberMe(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition"
+                                    />
+                                    <span className="text-sm text-gray-600 font-medium select-none">Remember me</span>
+                                </label>
+                                <a href="#" className="text-sm text-blue-600 hover:underline font-medium">Forgot password?</a>
                             </div>
 
                             <button type="submit" disabled={loading}

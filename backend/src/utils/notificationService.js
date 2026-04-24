@@ -20,21 +20,23 @@ const sendEmail = async (to, subject, text) => {
         const user = process.env.EMAIL_USER;
         const pass = process.env.EMAIL_PASS;
         if (!user || user === 'your_email@gmail.com' || !pass || pass === 'your_gmail_app_password') {
-            console.log('[notificationService.sendEmail] Skip: Missing credentials.');
-            console.log(`[DEBUG_EMAIL] To: ${to}, Subject: ${subject}, Body: ${text}`);
-            return true; // Pretend it sent
+            console.log('\x1b[33m%s\x1b[0m', '[EmailService] Skip: Missing credentials in .env');
+            return true; 
         }
 
         const transporter = nodemailer.createTransport({
-            service: process.env.EMAIL_SERVICE || 'gmail',
-            auth: { user, pass }
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: { user, pass },
+            tls: { rejectUnauthorized: false }
         });
 
-        await transporter.sendMail({ from: user, to, subject, text });
-        console.log(`[notificationService.sendEmail] Email sent to: ${to}`);
+        await transporter.sendMail({ from: `"WellTrack" <${user}>`, to, subject, text });
+        console.log('\x1b[32m%s\x1b[0m', `[EmailService] Sent to: ${to}`);
         return true;
     } catch (err) {
-        console.error('[notificationService.sendEmail] Error:', err);
+        console.error('\x1b[31m%s\x1b[0m', '[EmailService] Error:', err.message);
         return false;
     }
 };
@@ -54,17 +56,19 @@ const sendSMS = async (to, body) => {
         const phone = process.env.TWILIO_PHONE_NUMBER;
 
         if (!sid || sid === 'your_twilio_sid' || !auth || auth === 'your_twilio_auth_token' || !phone) {
-            console.log('[notificationService.sendSMS] Skip: Missing Twilio credentials.');
-            console.log(`[DEBUG_SMS] To: ${to}, Body: ${body}`);
-            return true; // Pretend it sent
+            console.log('\x1b[33m%s\x1b[0m', '[SMSService] Skip: Missing Twilio credentials in .env');
+            return true;
         }
 
         const client = twilio(sid, auth);
-        await client.messages.create({ body, from: phone, to });
-        console.log(`[notificationService.sendSMS] SMS sent to: ${to}`);
+        const message = await client.messages.create({ body, from: phone, to });
+        console.log('\x1b[32m%s\x1b[0m', `[SMSService] Sent to ${to}. SID: ${message.sid}`);
         return true;
     } catch (err) {
-        console.error('[notificationService.sendSMS] Error:', err);
+        console.error('\x1b[31m%s\x1b[0m', '[SMSService] Error:', err.message);
+        if (err.message.includes('not verified')) {
+            console.error('\x1b[33m%s\x1b[0m', 'TIP: Verify the destination number in Twilio Console if using a Trial Account.');
+        }
         return false;
     }
 };

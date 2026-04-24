@@ -15,7 +15,7 @@ const api = axios.create({
 // ── Request interceptor: attach JWT ───────────────────────────────────────────
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('healthPredict_token');
+        const token = localStorage.getItem('healthPredict_token') || sessionStorage.getItem('healthPredict_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -32,6 +32,8 @@ api.interceptors.response.use(
             // Token expired or invalid — force logout
             localStorage.removeItem('healthPredict_token');
             localStorage.removeItem('healthPredict_user');
+            sessionStorage.removeItem('healthPredict_token');
+            sessionStorage.removeItem('healthPredict_user');
             if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/login';
             }

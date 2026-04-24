@@ -23,12 +23,16 @@ const {
     deactivateUser,
     changeUserRole,
     permanentDeleteUser,
+    forgotPassword,
+    resetPassword,
 } = require('../controllers/userController');
 
 // ── Public Routes ──────────────────────────────────────────────────────────────
-router.post('/register', registerUser);  // POST   /api/users/register
-router.post('/send-pin', sendAdminPin);  // POST   /api/users/send-pin
-router.post('/login', loginUser);        // POST   /api/users/login
+router.post('/register', registerUser);                    // POST   /api/users/register
+router.post('/send-pin', sendAdminPin);                    // POST   /api/users/send-pin
+router.post('/login', loginUser);                          // POST   /api/users/login
+router.post('/forgot-password', forgotPassword);           // POST   /api/users/forgot-password
+router.post('/reset-password/:token', resetPassword);      // POST   /api/users/reset-password/:token
 
 // ── Protected: Own Profile ─────────────────────────────────────────────────────
 router.get('/profile', authenticate, getProfile);                             // GET    /api/users/profile

@@ -48,6 +48,8 @@ const userSchema = new mongoose.Schema(
             trim: true,
             maxlength: [50, 'Username must be at most 50 characters.'],
         },
+        resetPasswordToken: String,
+        resetPasswordExpire: Date,
 
         // ── Role & status ──────────────────────────────────────────────────────
         role: {

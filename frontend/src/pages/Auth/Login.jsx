@@ -108,7 +108,7 @@ export default function Login() {
                                     />
                                     <span className="text-sm text-gray-600 font-medium select-none">Remember me</span>
                                 </label>
-                                <a href="#" className="text-sm text-blue-600 hover:underline font-medium">Forgot password?</a>
+                                <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline font-medium">Forgot password?</Link>
                             </div>
 
                             <button type="submit" disabled={loading}

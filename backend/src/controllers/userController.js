@@ -7,6 +7,7 @@
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const User = require('../models/User');
 const Otp = require('../models/otpModel');
 const { sendEmail, sendSMS } = require('../utils/notificationService');
@@ -470,6 +471,101 @@ const permanentDeleteUser = async (req, res) => {
     }
 };
 
+// ── 12. Forgot Password ────────────────────────────────────────────────────────
+/**
+ * POST /api/users/forgot-password
+ * Body: { email }
+ */
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Please provide an email.' });
+        }
+
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'There is no user with that email.' });
+        }
+
+        // Generate token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        
+        // Hash token and set to resetPasswordToken field
+        user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        
+        // Set expire to 10 minutes
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+        await user.save({ validateBeforeSave: false });
+
+        // Build reset URL
+        const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+        const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a POST request to: \n\n ${resetUrl}`;
+
+        // Send email
+        const emailSent = await sendEmail(user.email, 'Password Reset Token', message);
+        if (!emailSent) {
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+            return res.status(500).json({ success: false, message: 'Email could not be sent.' });
+        }
+
+        res.status(200).json({ success: true, message: 'Email sent' });
+    } catch (err) {
+        console.error('[forgotPassword]', err);
+        res.status(500).json({ success: false, message: 'Server error during forgot password.' });
+    }
+};
+
+// ── 13. Reset Password ─────────────────────────────────────────────────────────
+/**
+ * POST /api/users/reset-password/:token
+ * Body: { password, confirmPassword }
+ */
+const resetPassword = async (req, res) => {
+    try {
+        // Get hashed token
+        const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired reset token.' });
+        }
+
+        const { password, confirmPassword } = req.body;
+        if (!password || !confirmPassword) {
+            return res.status(400).json({ success: false, message: 'Please provide both passwords.' });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ success: false, message: 'Passwords do not match.' });
+        }
+
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(password);
+        
+        if (password.length < 6 || !hasLetter || !hasNumber || !hasSymbol) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters and contain letters, numbers, and symbols.' });
+        }
+
+        user.password = password;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        respondWithToken(res, user);
+    } catch (err) {
+        console.error('[resetPassword]', err);
+        res.status(500).json({ success: false, message: 'Server error resetting password.' });
+    }
+};
+
 module.exports = {
     registerUser,
     sendAdminPin,
@@ -483,4 +579,6 @@ module.exports = {
     deactivateUser,
     changeUserRole,
     permanentDeleteUser,
+    forgotPassword,
+    resetPassword,
 };

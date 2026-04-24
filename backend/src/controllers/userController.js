@@ -152,6 +152,9 @@ const sendAdminPin = async (req, res, next) => {
             sendSMS(formattedPhone, message)
         ]);
         
+        console.log(`[sendAdminPin] Delivery Results for ${email}: Email=${emailSuccess}, SMS=${smsSuccess}`);
+        console.log(`[sendAdminPin] PIN is: ${pin} (for debugging)`);
+        
         if (!emailSuccess && !smsSuccess) {
             console.error(`[sendAdminPin] Both Email and SMS failed for ${email}`);
             return res.status(500).json({ 

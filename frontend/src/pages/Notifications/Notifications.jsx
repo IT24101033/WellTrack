@@ -5,6 +5,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import GooglePayButton from '@google-pay/button-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
 import {
     fetchNotifications,
     markNotificationRead,
@@ -51,9 +55,72 @@ function Toggle({ value, onChange }) {
     );
 }
 
+/* ─── Stripe Checkout Form ───────────────────────────────────── */
+function StripeCheckoutForm({ plan, amount, onSuccess, onClose }) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [message, setMessage] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!stripe || !elements) return;
+
+        setIsProcessing(true);
+        setMessage('');
+
+        const { error, paymentIntent } = await stripe.confirmPayment({
+            elements,
+            redirect: "if_required"
+        });
+
+        if (error) {
+            setMessage(error.message);
+            setIsProcessing(false);
+        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+            setMessage('Payment successful!');
+            const ok = await onSuccess(plan, { method: 'stripe', file: null });
+            if (ok) {
+                await new Promise(r => setTimeout(r, 1600));
+                onClose();
+            } else {
+                setMessage('Error upgrading plan in backend.');
+                setIsProcessing(false);
+            }
+        } else {
+            setMessage('An unexpected error occurred.');
+            setIsProcessing(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <PaymentElement options={{ 
+                layout: 'tabs'
+            }} />
+            {message && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: message.includes('success') ? '#10B981' : '#EF4444', marginBottom: 8 }}>{message}</div>}
+            <button
+                disabled={isProcessing || !stripe || !elements}
+                type="submit"
+                style={{
+                    width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', cursor: isProcessing ? 'default' : 'pointer',
+                    background: 'linear-gradient(135deg,#3B82F6,#7C3AED)',
+                    color: '#fff', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    opacity: isProcessing ? 0.85 : 1, marginTop: 8
+                }}
+            >
+                {isProcessing ? <><Loader size={17} style={{ animation: 'spin 0.8s linear infinite' }} /> Processing…</> : <><Lock size={15} /> Pay Rs {amount.toFixed(0)}</>}
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'rgba(148,163,184,0.5)', marginTop: 4 }}>
+                <Lock size={10} /> 256-bit SSL encrypted · Secure Stripe Payment
+            </div>
+        </form>
+    );
+}
+
 /* ─── Payment Modal ──────────────────────────────────────────── */
 function PaymentModal({ plan, onClose, onSuccess }) {
-    const [method, setMethod] = useState('card'); // 'card' | 'receipt'
+    const [method, setMethod] = useState('card'); // 'card' | 'receipt' | 'gpay'
     
     // Card state
     const [name, setName] = useState('');
@@ -67,6 +134,31 @@ function PaymentModal({ plan, onClose, onSuccess }) {
     const [preview, setPreview] = useState(null);
     
     const [status, setStatus] = useState('idle'); // idle | processing | success | error
+
+    const { token } = useAuth();
+    const [clientSecret, setClientSecret] = useState('');
+
+    useEffect(() => {
+        if (method === 'stripe' && plan !== 'Free') {
+            const fetchSecret = async () => {
+                try {
+                    const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+                    const res = await fetch(`${BASE}/subscription/create-payment-intent`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ planName: plan })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.clientSecret) {
+                        setClientSecret(data.clientSecret);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch intent:", e);
+                }
+            };
+            fetchSecret();
+        }
+    }, [method, plan, token]);
 
     const amount = PLAN_AMOUNTS[plan];
     const masked = card ? card.padEnd(19, ' ').replace(/\d(?=.{4})/g, '•') : '•••• •••• •••• ••••';
@@ -128,17 +220,33 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                 </div>
 
                 {/* Method Tabs */}
-                <div style={{ display: 'flex', padding: '16px 24px 0', gap: 12 }}>
-                    <button onClick={() => setMethod('card')} style={{ flex: 1, padding: '10px 0', background: method === 'card' ? 'rgba(59,130,246,0.15)' : 'transparent', border: '1px solid ' + (method === 'card' ? '#3B82F6' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'card' ? '#3B82F6' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s' }}>
-                        <CreditCard size={15} /> Card (Demo)
+                <div style={{ display: 'flex', padding: '16px 24px 0', gap: 6, flexWrap: 'wrap' }}>
+                    <button onClick={() => setMethod('card')} style={{ flex: '1 1 calc(25% - 6px)', padding: '10px 0', background: method === 'card' ? 'rgba(59,130,246,0.15)' : 'transparent', border: '1px solid ' + (method === 'card' ? '#3B82F6' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'card' ? '#3B82F6' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s' }}>
+                        <CreditCard size={15} /> Card
                     </button>
-                    <button onClick={() => setMethod('receipt')} style={{ flex: 1, padding: '10px 0', background: method === 'receipt' ? 'rgba(16,185,129,0.15)' : 'transparent', border: '1px solid ' + (method === 'receipt' ? '#10B981' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'receipt' ? '#10B981' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s' }}>
-                        <UploadCloud size={15} /> Bank Transfer
+                    <button onClick={() => setMethod('stripe')} style={{ flex: '1 1 calc(25% - 6px)', padding: '10px 0', background: method === 'stripe' ? 'rgba(99,102,241,0.15)' : 'transparent', border: '1px solid ' + (method === 'stripe' ? '#6366F1' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'stripe' ? '#6366F1' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all .2s' }}>
+                        <Lock size={13} /> Stripe
+                    </button>
+                    <button onClick={() => setMethod('receipt')} style={{ flex: '1 1 calc(25% - 6px)', padding: '10px 0', background: method === 'receipt' ? 'rgba(16,185,129,0.15)' : 'transparent', border: '1px solid ' + (method === 'receipt' ? '#10B981' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'receipt' ? '#10B981' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all .2s' }}>
+                        <UploadCloud size={13} /> Transfer
+                    </button>
+                    <button onClick={() => setMethod('gpay')} style={{ flex: '1 1 calc(25% - 6px)', padding: '10px 0', background: method === 'gpay' ? 'rgba(255,255,255,0.15)' : 'transparent', border: '1px solid ' + (method === 'gpay' ? '#fff' : 'rgba(255,255,255,0.1)'), borderRadius: 10, color: method === 'gpay' ? '#fff' : '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all .2s' }}>
+                        GPay
                     </button>
                 </div>
 
                 {/* Content */}
-                {method === 'card' ? (
+                {method === 'stripe' ? (
+                    clientSecret ? (
+                        <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', variables: { colorPrimary: '#3B82F6', colorBackground: '#1e293b' } } }}>
+                            <StripeCheckoutForm plan={plan} amount={amount} onSuccess={onSuccess} onClose={onClose} />
+                        </Elements>
+                    ) : (
+                        <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
+                            <Loader size={24} style={{ animation: 'spin 1s linear infinite', color: '#6366F1' }} />
+                        </div>
+                    )
+                ) : method === 'card' ? (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 24px 0' }}>
                             <div
@@ -229,7 +337,7 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                             </div>
                         </div>
                     </>
-                ) : (
+                ) : method === 'receipt' ? (
                     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 16 }}>
                             <div style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginBottom: 8, letterSpacing: 1 }}>BANK DETAILS</div>
@@ -263,9 +371,56 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                             </label>
                         </div>
                     </div>
-                )}
+                ) : method === 'gpay' ? (
+                    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, minHeight: 250 }}>
+                        <GooglePayButton
+                            environment="TEST"
+                            paymentRequest={{
+                                apiVersion: 2,
+                                apiVersionMinor: 0,
+                                allowedPaymentMethods: [{
+                                    type: 'CARD',
+                                    parameters: {
+                                        allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                                        allowedCardNetworks: ['MASTERCARD', 'VISA'],
+                                    },
+                                    tokenizationSpecification: {
+                                        type: 'PAYMENT_GATEWAY',
+                                        parameters: { gateway: 'example', gatewayMerchantId: 'exampleGatewayMerchantId' },
+                                    },
+                                }],
+                                merchantInfo: { merchantId: '12345678901234567890', merchantName: 'WellTrack Demo' },
+                                transactionInfo: {
+                                    totalPriceStatus: 'FINAL',
+                                    totalPriceLabel: 'Total',
+                                    totalPrice: amount.toString(),
+                                    currencyCode: 'LKR',
+                                    countryCode: 'LK',
+                                },
+                            }}
+                            onLoadPaymentData={async (paymentRequest) => {
+                                setStatus('processing');
+                                const ok = await onSuccess(plan, { method: 'google_pay', file: null });
+                                if (ok) {
+                                    setStatus('success');
+                                    await new Promise(r => setTimeout(r, 1600));
+                                    onClose();
+                                } else {
+                                    setStatus('error');
+                                }
+                            }}
+                            buttonColor="white"
+                            buttonType="pay"
+                            style={{ width: '100%', maxWidth: 300, height: 48, marginTop: 20 }}
+                        />
+                        <div style={{ fontSize: 12, color: 'rgba(148,163,184,0.6)', textAlign: 'center', maxWidth: 280, marginTop: 12 }}>
+                            Test mode is active. You can select any test card. No real funds will be charged.
+                        </div>
+                    </div>
+                ) : null}
 
                 {/* Error & Pay Action */}
+                {method !== 'gpay' && method !== 'stripe' && (
                 <div style={{ padding: '0 24px 24px' }}>
                     {status === 'error' && (
                         <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#EF4444', marginBottom: 16 }}>
@@ -297,6 +452,7 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                         <Lock size={10} /> 256-bit SSL encrypted · {method === 'card' ? 'Simulated payment' : 'Secure upload'}
                     </div>
                 </div>
+                )}
 
                 {/* Close */}
                 <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: 30, height: 30, cursor: 'pointer', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

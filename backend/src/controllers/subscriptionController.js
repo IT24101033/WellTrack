@@ -6,6 +6,9 @@ const { sendAppAlert } = require('../utils/notificationService');
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, ...data });
 const fail = (res, message, status = 400) => res.status(status).json({ success: false, message });
 
+const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder';
+const stripe = require('stripe')(stripeSecret);
+
 // GET /api/subscription  — get own subscription (auto-creates Free plan if none exists)
 const getSubscription = async (req, res) => {
     try {
@@ -101,4 +104,35 @@ const cancelSubscription = async (req, res) => {
     }
 };
 
-module.exports = { getSubscription, updateSubscription, cancelSubscription };
+// POST /api/subscription/create-payment-intent
+const createPaymentIntent = async (req, res) => {
+    try {
+        const { planName } = req.body;
+        const validPlans = { 'Free': 0, 'Premium': 300, 'Pro': 500 };
+        const amount = validPlans[planName];
+
+        if (amount === undefined) {
+            return fail(res, 'Invalid plan configuration.', 400);
+        }
+
+        if (amount === 0) {
+            return ok(res, { clientSecret: null });
+        }
+
+        // Create a PaymentIntent with the specified amount.
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount * 100, // Stripe uses cents
+            currency: 'lkr',
+            automatic_payment_methods: {
+                enabled: true,
+            },
+        });
+
+        return ok(res, { clientSecret: paymentIntent.client_secret });
+    } catch (err) {
+        console.error('[createPaymentIntent]', err);
+        return fail(res, err.message || 'Failed to create payment intent.', 500);
+    }
+};
+
+module.exports = { getSubscription, updateSubscription, cancelSubscription, createPaymentIntent };

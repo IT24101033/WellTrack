@@ -41,7 +41,7 @@ const subscriptionSchema = new mongoose.Schema(
         },
         paymentMethod: {
             type: String,
-            enum: ['card', 'receipt', 'free'],
+            enum: ['card', 'receipt', 'google_pay', 'free', 'stripe'],
             default: 'free',
         },
         receiptUrl: {

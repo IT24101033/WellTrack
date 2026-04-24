@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middlewares/authMiddleware');
 
-const { getSubscription, updateSubscription, cancelSubscription } = require('../controllers/subscriptionController');
+const { getSubscription, updateSubscription, cancelSubscription, createPaymentIntent } = require('../controllers/subscriptionController');
 const { getPreferences, updatePreferences } = require('../controllers/preferenceController');
 const upload = require('../middlewares/uploadMiddleware');
 
@@ -14,6 +14,7 @@ router.use(authenticate);
 router.get('/subscription', getSubscription);
 router.put('/subscription', upload.single('receipt'), updateSubscription);
 router.delete('/subscription', cancelSubscription);
+router.post('/subscription/create-payment-intent', createPaymentIntent);
 
 // Preferences
 router.get('/preferences', getPreferences);

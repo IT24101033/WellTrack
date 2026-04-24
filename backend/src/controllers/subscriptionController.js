@@ -33,7 +33,7 @@ const getSubscription = async (req, res) => {
 const updateSubscription = async (req, res) => {
     try {
         const { planName, autoRenew, paymentMethod } = req.body;
-        const validPlans = ['Free', 'Premium', 'Pro'];
+        const validPlans = ['Free', 'Plus', 'Pro'];
         if (planName && !validPlans.includes(planName)) {
             return fail(res, `Invalid plan. Must be one of: ${validPlans.join(', ')}.`, 400);
         }
@@ -47,7 +47,11 @@ const updateSubscription = async (req, res) => {
             updateData.features = PLAN_FEATURES
                 ? PLAN_FEATURES[planName]
                 : [];
-            updateData.status = 'active';
+            
+            // If payment is via bank receipt, status is pending. Otherwise immediately active (for Free or Stripe)
+            const isManualPayment = paymentMethod === 'receipt' || req.file;
+            updateData.status = isManualPayment && planName !== 'Free' ? 'pending' : 'active';
+            
             updateData.startDate = new Date();
             const end = new Date();
             end.setFullYear(end.getFullYear() + 1);
@@ -72,11 +76,18 @@ const updateSubscription = async (req, res) => {
             { new: true, upsert: true }
         );
 
-        if (planName) {
+        if (planName && updateData.status === 'active') {
             await sendAppAlert(
                 req.user.id,
                 'Subscription Updated',
                 `Your WellTrack subscription has been updated to the ${planName} plan. Enjoy your features!`,
+                'system'
+            );
+        } else if (planName && updateData.status === 'pending') {
+             await sendAppAlert(
+                req.user.id,
+                'Payment Received',
+                `We have received your payment slip for the ${planName} plan. An admin will verify it shortly.`,
                 'system'
             );
         }
@@ -108,7 +119,7 @@ const cancelSubscription = async (req, res) => {
 const createPaymentIntent = async (req, res) => {
     try {
         const { planName } = req.body;
-        const validPlans = { 'Free': 0, 'Premium': 300, 'Pro': 500 };
+        const validPlans = { 'Free': 0, 'Plus': 300, 'Pro': 500 };
         const amount = validPlans[planName];
 
         if (amount === undefined) {
@@ -135,4 +146,63 @@ const createPaymentIntent = async (req, res) => {
     }
 };
 
-module.exports = { getSubscription, updateSubscription, cancelSubscription, createPaymentIntent };
+// ── Admin Functions ────────────────────────────────────────────────────────────
+
+// GET /api/admin/subscriptions/pending
+const getPendingSubscriptions = async (req, res) => {
+    try {
+        const subscriptions = await Subscription.find({ status: 'pending' })
+            .populate('userId', 'fullName email')
+            .sort({ updatedAt: -1 });
+        return ok(res, { subscriptions });
+    } catch (err) {
+        console.error('[getPendingSubscriptions]', err);
+        return fail(res, 'Failed to fetch pending subscriptions.', 500);
+    }
+};
+
+// PATCH /api/admin/subscriptions/:id/verify
+const verifySubscription = async (req, res) => {
+    try {
+        const { action } = req.body; // 'approve' or 'reject'
+        if (!['approve', 'reject'].includes(action)) {
+            return fail(res, 'Invalid action. Must be approve or reject.', 400);
+        }
+
+        const subscription = await Subscription.findById(req.params.id);
+        if (!subscription) return fail(res, 'Subscription record not found.', 404);
+
+        if (action === 'approve') {
+            subscription.status = 'active';
+            await sendAppAlert(
+                subscription.userId,
+                'Payment Verified!',
+                `Your ${subscription.planName} subscription has been approved. Welcome to the ${subscription.planName} experience!`,
+                'system'
+            );
+        } else {
+            subscription.status = 'rejected';
+            await sendAppAlert(
+                subscription.userId,
+                'Payment Rejected',
+                `Your payment slip for the ${subscription.planName} plan was rejected. Please contact support or try uploading a clearer image.`,
+                'system'
+            );
+        }
+
+        await subscription.save();
+        return ok(res, { subscription, message: `Subscription ${action === 'approve' ? 'approved' : 'rejected'} successfully.` });
+    } catch (err) {
+        console.error('[verifySubscription]', err);
+        return fail(res, 'Failed to verify subscription.', 500);
+    }
+};
+
+module.exports = {
+    getSubscription,
+    updateSubscription,
+    cancelSubscription,
+    createPaymentIntent,
+    getPendingSubscriptions,
+    verifySubscription
+};

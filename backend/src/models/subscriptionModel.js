@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const PLAN_FEATURES = {
     Free: ['Basic notifications', 'Daily health summary'],
-    Premium: ['Basic notifications', 'Daily health summary', 'Medication alerts', 'Appointment reminders', 'Weekly reports'],
+    Plus: ['Basic notifications', 'Daily health summary', 'Medication alerts', 'Appointment reminders', 'Weekly reports'],
     Pro: ['Basic notifications', 'Daily health summary', 'Medication alerts', 'Appointment reminders', 'Weekly reports', 'Real-time AI risk alerts', 'Advanced analytics notifications', 'Priority support'],
 };
 
@@ -19,7 +19,7 @@ const subscriptionSchema = new mongoose.Schema(
         },
         planName: {
             type: String,
-            enum: ['Free', 'Premium', 'Pro'],
+            enum: ['Free', 'Plus', 'Pro'],
             default: 'Free',
         },
         startDate: {
@@ -36,7 +36,7 @@ const subscriptionSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['active', 'cancelled', 'expired'],
+            enum: ['active', 'cancelled', 'expired', 'pending', 'rejected'],
             default: 'active',
         },
         paymentMethod: {

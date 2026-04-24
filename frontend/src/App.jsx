@@ -19,6 +19,8 @@ import AdminTipsManagement from './pages/Admin/AdminTipsManagement';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminBroadcasts from './pages/Admin/AdminBroadcasts';
 import AdminReports from './pages/Admin/AdminReports';
+import AdminPayments from './pages/Admin/AdminPayments';
+import Subscription from './pages/Subscription/Subscription';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -49,6 +51,7 @@ function App() {
                 <Route path="watch-sync" element={<GoogleFitSync />} />
                 <Route path="schedule" element={<Schedule />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="subscription" element={<Subscription />} />
 
                 {/* Admin Only */}
                 <Route path="admin/users" element={
@@ -69,6 +72,11 @@ function App() {
                 <Route path="admin/reports" element={
                     <ProtectedRoute adminOnly>
                         <AdminReports />
+                    </ProtectedRoute>
+                } />
+                <Route path="admin/payments" element={
+                    <ProtectedRoute adminOnly>
+                        <AdminPayments />
                     </ProtectedRoute>
                 } />
             </Route>

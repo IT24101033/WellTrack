@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Activity, UserCircle, FileText, Bell,
     Lightbulb, Calendar, LogOut, PlusCircle, ShieldCheck,
-    ChevronLeft, ChevronRight, Watch
+    ChevronLeft, ChevronRight, Watch, CreditCard
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -15,7 +15,6 @@ export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
 
     const studentLinks = [
-        { name: 'Home Website', href: '/', icon: Activity },
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Health Input', href: '/health-input', icon: PlusCircle },
         { name: 'Risk Prediction', href: '/prediction', icon: Activity },
@@ -24,15 +23,16 @@ export function Sidebar() {
         { name: 'Tips & Advice', href: '/tips', icon: Lightbulb },
         { name: 'Watch Sync', href: '/watch-sync', icon: Watch },
         { name: 'Schedule', href: '/schedule', icon: Calendar },
+        { name: 'Upgrade Account', href: '/subscription', icon: CreditCard },
         { name: 'Profile', href: '/profile', icon: UserCircle },
     ];
 
     const adminLinks = [
-        { name: 'Home Website', href: '/', icon: Activity },
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Manage Users', href: '/admin/users', icon: ShieldCheck },
         { name: 'Manage Reports', href: '/admin/reports', icon: FileText },
         { name: 'Manage Tips', href: '/admin/tips', icon: Lightbulb },
+        { name: 'Verify Payments', href: '/admin/payments', icon: CreditCard },
         { name: 'Broadcasts', href: '/admin/broadcasts', icon: Bell },
         { name: 'Profile', href: '/profile', icon: UserCircle },
     ];

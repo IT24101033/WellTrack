@@ -58,6 +58,7 @@ export default function Profile() {
     const [confirmDelete, setConfirmDelete] = useState('');
     const fileRef = useRef();
     const [selectedFile, setSelectedFile] = useState(null);
+    const [error, setError] = useState('');
 
     const [form, setForm] = useState({
         fullName: user?.fullName ?? '',
@@ -73,7 +74,14 @@ export default function Profile() {
         avatarSrc: user?.profileImage ?? null,
     });
     const [passForm, setPassForm] = useState({ current: '', next: '', confirm: '' });
-    const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
+    const setF = (k, v) => {
+        setError('');
+        if (k === 'phone') {
+            // Only numbers, max 10
+            v = v.replace(/[^0-9]/g, '').slice(0, 10);
+        }
+        setForm(f => ({ ...f, [k]: v }));
+    };
     const setP = (k, v) => setPassForm(f => ({ ...f, [k]: v }));
 
     const bmi = calcBMI(form.height, form.weight);
@@ -89,16 +97,42 @@ export default function Profile() {
     };
 
     const handleSave = async () => {
+        setError('');
+
+        // Validations
+        if (!form.fullName || form.fullName.trim().length < 2) {
+            setError('Full name must be at least 2 characters.');
+            return;
+        }
+        if (form.phone && !/^0[0-9]{9}$/.test(form.phone)) {
+            setError('Phone number must be exactly 10 digits (e.g., 0771234567).');
+            return;
+        }
+        if (form.username && !/^[a-zA-Z0-9_]{3,20}$/.test(form.username)) {
+            setError('Username must be 3-20 characters (alphanumeric or underscore).');
+            return;
+        }
+        if (form.height && (form.height < 50 || form.height > 250)) {
+            setError('Height must be between 50 and 250 cm.');
+            return;
+        }
+        if (form.weight && (form.weight < 10 || form.weight > 300)) {
+            setError('Weight must be between 10 and 300 kg.');
+            return;
+        }
+
         setSaving(true);
         try {
             const formData = new FormData();
             Object.keys(form).forEach(k => {
                 if (k !== 'avatarSrc' && form[k] !== null && form[k] !== undefined) {
-                    formData.append(k, form[k]);
+                    // Send phone as phoneNumber to match backend
+                    const key = k === 'phone' ? 'phoneNumber' : k;
+                    formData.append(key, form[k]);
                 }
             });
             if (selectedFile) formData.append('profileImage', selectedFile);
-            
+
             const res = await updateProfile(formData);
             if (res.data?.success) {
                 updateUser?.(res.data.user);
@@ -107,6 +141,7 @@ export default function Profile() {
                 setTimeout(() => setSaved(false), 3000);
             }
         } catch (err) {
+            setError(err.response?.data?.message || 'Failed to update profile.');
             console.error(err);
         } finally {
             setSaving(false);
@@ -120,7 +155,7 @@ export default function Profile() {
         const hasLetter = /[a-zA-Z]/.test(passForm.next);
         const hasNumber = /\d/.test(passForm.next);
         const hasSymbol = /[^a-zA-Z0-9]/.test(passForm.next);
-        
+
         if (passForm.next.length < 6 || !hasLetter || !hasNumber || !hasSymbol) {
             setPassError('Password must be at least 6 characters and contain letters, numbers, and symbols.');
             setSaving(false);
@@ -222,7 +257,14 @@ export default function Profile() {
                 })}
             </div>
 
-            {/* Success banner */}
+            {/* Error / Success banners */}
+            {error && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl animate-scale-in"
+                    style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-semibold">{error}</span>
+                </div>
+            )}
             {saved && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-2xl animate-scale-in"
                     style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>

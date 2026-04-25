@@ -21,10 +21,16 @@ export default function Register() {
     const [showOtp, setShowOtp] = useState(false);
     const [adminPin, setAdminPin] = useState('');
     const [googleCredential, setGoogleCredential] = useState(null);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleChange = (e) => {
         setError('');
-        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        let value = e.target.value;
+        if (e.target.name === 'phoneNumber') {
+            // Only allow numbers and limit to 10 digits
+            value = value.replace(/[^0-9]/g, '').slice(0, 10);
+        }
+        setForm((prev) => ({ ...prev, [e.target.name]: value }));
     };
 
     // Password strength
@@ -66,9 +72,14 @@ export default function Register() {
                 setError('Phone number is required for Admin registration.');
                 return;
             }
+            if (!/^0[0-9]{9}$/.test(form.phoneNumber)) {
+                setError('Phone number must be exactly 10 digits starting with 0 (e.g., 0771234567).');
+                return;
+            }
             try {
                 setLoading(true);
-                await sendPinApi({ email: form.email, phoneNumber: form.phoneNumber });
+                const res = await sendPinApi({ email: form.email, phoneNumber: form.phoneNumber });
+                setSuccessMessage(res.data.message);
                 setShowOtp(true);
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to send PIN.');
@@ -118,7 +129,8 @@ export default function Register() {
                 const decoded = JSON.parse(jsonPayload);
                 const googleEmail = decoded.email;
 
-                await sendPinApi({ email: googleEmail, phoneNumber: form.phoneNumber });
+                const res = await sendPinApi({ email: googleEmail, phoneNumber: form.phoneNumber });
+                setSuccessMessage(res.data.message);
                 setShowOtp(true);
                 setLoading(false);
             } else {
@@ -208,7 +220,7 @@ export default function Register() {
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <input name="phoneNumber" type="tel" value={form.phoneNumber} onChange={handleChange}
-                                            placeholder="+1234567890" className={inputClass} required={form.role === 'admin'} />
+                                            placeholder="0771234567" className={inputClass} required={form.role === 'admin'} />
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">Required to receive the Admin Verification PIN.</p>
                                 </div>
@@ -308,7 +320,7 @@ export default function Register() {
                         </div>
                         <h3 className="text-xl font-bold text-center text-gray-800 mb-2">Enter Verification PIN</h3>
                         <p className="text-sm text-center text-gray-500 mb-6">
-                            We've sent a 6-digit PIN to your email and phone number.
+                            {successMessage || "We've sent a 6-digit PIN to your email and phone number."}
                         </p>
                         
                         <input type="text" value={adminPin} onChange={e => { setAdminPin(e.target.value); setError(''); }}

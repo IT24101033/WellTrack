@@ -151,24 +151,33 @@ const sendAdminPin = async (req, res, next) => {
 
         // Send Email & SMS in parallel
         const [emailSuccess, smsSuccess] = await Promise.all([
-            sendEmail(email, 'Admin Registration PIN', message),
-            sendSMS(formattedPhone, message)
+            sendEmail(email, 'Admin Registration: Your Verification PIN', `
+                Your HealthPredict Admin Registration PIN is: ${pin}
+                
+                This code is required to complete your registration as an Admin.
+                It will expire in 10 minutes.
+                
+                If you did not request this code, please ignore this email.
+            `),
+            sendSMS(formattedPhone, `Your HealthPredict Admin PIN: ${pin}. Valid for 10 min.`)
         ]);
         
         console.log(`[sendAdminPin] Delivery Results for ${email}: Email=${emailSuccess}, SMS=${smsSuccess}`);
-        console.log(`[sendAdminPin] PIN is: ${pin} (for debugging)`);
+        console.log(`[sendAdminPin] DEBUG: The PIN for ${email} is ${pin}`);
         
         if (!emailSuccess && !smsSuccess) {
-            console.error(`[sendAdminPin] Both Email and SMS failed for ${email}`);
             return res.status(500).json({ 
                 success: false, 
-                message: 'Failed to deliver PIN via Email or SMS. Please check your contact details or try again later.' 
+                message: 'Failed to deliver PIN via Email or SMS. Please check your credentials or try again.' 
             });
         }
 
-        let deliveryMsg = 'PIN sent successfully.';
-        if (!emailSuccess) deliveryMsg = 'PIN sent via SMS (Email delivery failed).';
-        if (!smsSuccess) deliveryMsg = 'PIN sent via Email (SMS delivery failed).';
+        let deliveryMsg = 'Verification PIN has been sent to your email and phone number.';
+        if (!smsSuccess && emailSuccess) {
+            deliveryMsg = `PIN sent to your email (${email}). SMS delivery failed, but you can use the code from your email.`;
+        } else if (smsSuccess && !emailSuccess) {
+            deliveryMsg = 'PIN sent via SMS. Email delivery failed.';
+        }
 
         res.status(200).json({ success: true, message: deliveryMsg });
     } catch (err) {

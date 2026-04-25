@@ -44,7 +44,6 @@ const userSchema = new mongoose.Schema(
         },
         googleId: {
             type: String,
-            default: null,
             unique: true,
             sparse: true, // Allows null/empty values to exist without violating uniqueness
         },
@@ -125,10 +124,10 @@ const userSchema = new mongoose.Schema(
             default: '',
             validate: {
                 validator: function(v) {
-                    // Allow empty string, or generic international/national format: +[digits] or 0[digits], 7-15 chars
-                    return v === '' || /^\+?[0-9]{7,15}$/.test(v);
+                    // Exactly 10 digits starting with 0 (Sri Lanka format)
+                    return v === '' || /^0[0-9]{9}$/.test(v);
                 },
-                message: 'Please enter a valid phone number (e.g., +1234567890).'
+                message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0771234567).'
             }
         },
 

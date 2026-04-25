@@ -4,7 +4,7 @@ import {
     Loader2, CheckCircle2, Clock, X, CreditCard, Lock 
 } from 'lucide-react';
 import GooglePayButton from '@google-pay/button-react';
-import { getSubscription, updateSubscription, cancelSubscription } from '../../services/subscriptionService';
+import { getSubscription, updateSubscription, cancelSubscription, sendPaymentOTP, verifyPaymentOTP } from '../../services/subscriptionService';
 import { useAuth } from '../../context/AuthContext';
 
 const PLANS = [
@@ -50,6 +50,11 @@ export default function Subscription() {
     
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+
+    // OTP States
+    const [showOTPStep, setShowOTPStep] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
+    const [verifyingOTP, setVerifyingOTP] = useState(false);
 
     useEffect(() => {
         loadSub();
@@ -115,19 +120,8 @@ export default function Subscription() {
         setError('');
     };
 
-    const handleSubmitPayment = async (overrideMethod) => {
+    const completeSubscriptionUpdate = async (overrideMethod) => {
         const activeMethod = overrideMethod || method;
-        setError('');
-        
-        if (activeMethod === 'receipt' && !file) {
-            setError('Please upload a payment slip.');
-            return;
-        }
-        if (activeMethod === 'card' && (!cardName || cardNumber.length < 19 || cardExp.length < 5 || cardCvv.length < 3)) {
-            setError('Please fill in valid card details.');
-            return;
-        }
-
         setUpdating(true);
         try {
             let res;
@@ -150,10 +144,79 @@ export default function Subscription() {
                 setSelectedPlan(null);
                 setFile(null);
                 setCardName(''); setCardNumber(''); setCardExp(''); setCardCvv('');
+                setShowOTPStep(false);
+                setOtpCode('');
                 setTimeout(() => setSuccess(false), 5000);
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Payment failed.');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleSubmitPayment = async (overrideMethod) => {
+        const activeMethod = overrideMethod || method;
+        setError('');
+        
+        if (activeMethod === 'receipt' && !file) {
+            setError('Please upload a payment slip.');
+            return;
+        }
+        if (activeMethod === 'card' && (!cardName || cardNumber.length < 19 || cardExp.length < 5 || cardCvv.length < 3)) {
+            setError('Please fill in valid card details.');
+            return;
+        }
+
+        // For "card" or "gpay", send OTP. For "receipt", just proceed.
+        if (activeMethod === 'card' || activeMethod === 'gpay' || activeMethod === 'google_pay') {
+            setUpdating(true);
+            try {
+                const res = await sendPaymentOTP();
+                if (res.data?.success) {
+                    setShowOTPStep(true);
+                } else {
+                    setError(res.data?.message || 'Failed to send verification code.');
+                }
+            } catch (err) {
+                setError(err.response?.data?.message || 'Failed to send verification code. Please try again.');
+            } finally {
+                setUpdating(false);
+            }
+        } else {
+            completeSubscriptionUpdate(activeMethod);
+        }
+    };
+
+    const handleConfirmOTP = async () => {
+        if (otpCode.length !== 6) {
+            setError('Please enter a 6-digit code.');
+            return;
+        }
+        setError('');
+        setVerifyingOTP(true);
+        try {
+            const res = await verifyPaymentOTP(otpCode);
+            if (res.data?.success) {
+                completeSubscriptionUpdate();
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || 'Invalid verification code.');
+        } finally {
+            setVerifyingOTP(false);
+        }
+    };
+
+    const handleResendOTP = async () => {
+        setUpdating(true);
+        setError('');
+        try {
+            const res = await sendPaymentOTP();
+            if (res.data?.success) {
+                alert('A new verification code has been sent to your email.');
+            }
+        } catch (err) {
+            setError('Failed to resend code. Please try again later.');
         } finally {
             setUpdating(false);
         }
@@ -318,6 +381,8 @@ export default function Subscription() {
 
                         {/* Content */}
                         <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                            {!showOTPStep ? (
+                                <>
                             {method === 'card' && (
                                 <div className="space-y-6">
                                     {/* Visual Card */}
@@ -472,6 +537,43 @@ export default function Subscription() {
                                     />
                                 </div>
                             )}
+                                </>
+                            ) : (
+                                <div className="space-y-6 animate-scale-in py-4 text-center">
+                                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                        <Shield className="w-8 h-8 text-blue-600" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-bold text-gray-800 dark:text-white">Verify Your Identity</h4>
+                                        <p className="text-xs text-gray-500">We've sent a 6-digit verification code to your email. Please enter it below to confirm your payment.</p>
+                                    </div>
+                                    <div className="max-w-[240px] mx-auto">
+                                        <input 
+                                            type="text"
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            placeholder="000000"
+                                            className="w-full text-center text-3xl font-mono tracking-[0.5em] bg-gray-50 dark:bg-slate-950 border-2 border-gray-100 dark:border-slate-800 rounded-2xl py-4 outline-none focus:border-blue-500 transition-all"
+                                            maxLength={6}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-3 items-center">
+                                        <button 
+                                            onClick={handleResendOTP}
+                                            disabled={updating}
+                                            className="text-xs font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                                        >
+                                            {updating ? 'Sending...' : "Didn't receive code? Resend"}
+                                        </button>
+                                        <button 
+                                            onClick={() => { setShowOTPStep(false); setOtpCode(''); }}
+                                            className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600"
+                                        >
+                                            Use a different payment method
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="flex items-center gap-2 text-red-500 bg-red-50 dark:bg-red-500/5 p-3 rounded-2xl border border-red-100 dark:border-red-500/10 text-xs font-medium animate-shake">
@@ -481,17 +583,23 @@ export default function Subscription() {
                         </div>
 
                         {/* Action Area */}
-                        {method !== 'gpay' && (
+                        {(method !== 'gpay' || showOTPStep) && (
                             <div className="p-6 bg-gray-50 dark:bg-slate-950/50 border-t border-gray-100 dark:border-slate-800">
                                 <button
-                                    onClick={() => handleSubmitPayment()}
-                                    disabled={updating}
+                                    onClick={() => showOTPStep ? handleConfirmOTP() : handleSubmitPayment()}
+                                    disabled={updating || verifyingOTP}
                                     className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 group"
                                 >
-                                    {updating ? (
-                                        <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                                    {updating || verifyingOTP ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin" /> {verifyingOTP ? 'Verifying...' : 'Processing...'}</>
                                     ) : (
-                                        <><Lock className="w-4 h-4 opacity-70 group-hover:scale-110 transition-transform" /> Confirm & Pay LKR {selectedPlan.price}</>
+                                        <>
+                                            {showOTPStep ? (
+                                                <><CheckCircle2 className="w-4 h-4 opacity-70 group-hover:scale-110 transition-transform" /> Verify & Confirm Payment</>
+                                            ) : (
+                                                <><Lock className="w-4 h-4 opacity-70 group-hover:scale-110 transition-transform" /> Confirm & Pay LKR {selectedPlan.price}</>
+                                            )}
+                                        </>
                                     )}
                                 </button>
                                 <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-400">

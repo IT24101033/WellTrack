@@ -16,6 +16,8 @@ export const updateSubscription = (formData) => api.put('/subscription', formDat
 export const cancelSubscription = () => api.delete('/subscription');
 
 export const createPaymentIntent = (planName) => api.post('/subscription/create-payment-intent', { planName });
+export const sendPaymentOTP = () => api.post('/subscription/send-otp');
+export const verifyPaymentOTP = (code) => api.post('/subscription/verify-otp', { code });
 
 // ── Admin Endpoints ────────────────────────────────────────────────────────────
 
@@ -28,6 +30,8 @@ export default {
     updateSubscription,
     cancelSubscription,
     createPaymentIntent,
+    sendPaymentOTP,
+    verifyPaymentOTP,
     getPendingSubscriptions,
     verifySubscription
 };

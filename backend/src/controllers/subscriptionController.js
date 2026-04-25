@@ -1,7 +1,10 @@
 'use strict';
 
 const Subscription = require('../models/subscriptionModel');
-const { sendAppAlert } = require('../utils/notificationService');
+const Otp = require('../models/otpModel');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const { sendAppAlert, sendEmail } = require('../utils/notificationService');
 
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, ...data });
 const fail = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -198,11 +201,66 @@ const verifySubscription = async (req, res) => {
     }
 };
 
+// ── Payment Verification (OTP) ────────────────────────────────────────────────
+
+const sendPaymentOTP = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user || !user.email) return fail(res, 'User email not found.', 400);
+        const userEmail = user.email;
+
+        // Generate 6-digit code
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = await bcrypt.hash(otp, 10);
+
+        // Save to DB (overwrite existing for this email if any, or just create new)
+        await Otp.deleteMany({ email: userEmail }); // Clear previous OTPs
+        await Otp.create({ email: userEmail, otpHash });
+
+        // Send Email
+        const subject = 'Your WellTrack Payment Verification Code';
+        const text = `Hello,\n\nYour verification code for the payment is: ${otp}\n\nThis code will expire in 10 minutes.\n\nThank you,\nWellTrack Team`;
+        
+        await sendEmail(userEmail, subject, text);
+
+        return ok(res, { message: 'Verification code sent to your email.' });
+    } catch (err) {
+        console.error('[sendPaymentOTP]', err);
+        return fail(res, 'Failed to send verification code.', 500);
+    }
+};
+
+const verifyPaymentOTP = async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return fail(res, 'Verification code is required.', 400);
+
+        const user = await User.findById(req.user.id);
+        if (!user || !user.email) return fail(res, 'User email not found.', 400);
+
+        const otpRecord = await Otp.findOne({ email: user.email });
+        if (!otpRecord) return fail(res, 'Verification code expired or not found. Please resend.', 400);
+
+        const isMatch = await otpRecord.compareOtp(code);
+        if (!isMatch) return fail(res, 'Invalid verification code.', 400);
+
+        // Success - remove the OTP so it can't be used again
+        await Otp.deleteOne({ _id: otpRecord._id });
+
+        return ok(res, { message: 'Verification successful.' });
+    } catch (err) {
+        console.error('[verifyPaymentOTP]', err);
+        return fail(res, 'Failed to verify code.', 500);
+    }
+};
+
 module.exports = {
     getSubscription,
     updateSubscription,
     cancelSubscription,
     createPaymentIntent,
     getPendingSubscriptions,
-    verifySubscription
+    verifySubscription,
+    sendPaymentOTP,
+    verifyPaymentOTP
 };

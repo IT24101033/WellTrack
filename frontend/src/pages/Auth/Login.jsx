@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Activity, Lock, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { login as loginApi } from '../../services/authService';
+import { login as loginApi, googleLogin as googleLoginApi } from '../../services/authService';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
     const { login } = useAuth();
@@ -34,6 +35,20 @@ export default function Login() {
             navigate(from, { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleSuccess = async (response) => {
+        try {
+            setLoading(true);
+            setError('');
+            const res = await googleLoginApi(response.credential);
+            login(res.data.user, res.data.token, rememberMe);
+            navigate(from, { replace: true });
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google Login failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -119,6 +134,28 @@ export default function Login() {
                                 }
                             </button>
                         </form>
+
+                        <div className="mt-6">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-gray-500 font-medium">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center">
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={() => setError('Google Login failed.')}
+                                    useOneTap
+                                    theme="filled_blue"
+                                    shape="pill"
+                                    width="100%"
+                                />
+                            </div>
+                        </div>
 
                         <p className="text-center text-sm text-gray-500 mt-6">
                             Don&apos;t have an account?{' '}

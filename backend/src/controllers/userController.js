@@ -11,6 +11,9 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Otp = require('../models/otpModel');
 const { sendEmail, sendSMS } = require('../utils/notificationService');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const signToken = (id, role) =>
@@ -584,4 +587,76 @@ module.exports = {
     permanentDeleteUser,
     forgotPassword,
     resetPassword,
+    googleLogin: async (req, res) => {
+        try {
+            const { credential, role, adminPin } = req.body;
+            if (!credential) {
+                return res.status(400).json({ success: false, message: 'Google credential is required.' });
+            }
+
+            // Verify Google ID Token
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            const payload = ticket.getPayload();
+            const { email, name, picture, sub: googleId } = payload;
+
+            // Find or create user
+            let user = await User.findOne({ email: email.toLowerCase() });
+
+            if (!user) {
+                // Determine role
+                let targetRole = 'student';
+                if (role === 'admin') {
+                    if (!adminPin) {
+                        return res.status(400).json({ success: false, message: 'Admin registration via Google requires a verification PIN.' });
+                    }
+                    // Verify Admin PIN
+                    const otpRecord = await Otp.findOne({ email: email.toLowerCase() });
+                    if (!otpRecord) {
+                        return res.status(400).json({ success: false, message: 'PIN expired or not requested for this email.' });
+                    }
+                    const isMatch = await otpRecord.compareOtp(adminPin);
+                    if (!isMatch) {
+                        return res.status(400).json({ success: false, message: 'Invalid Admin PIN.' });
+                    }
+                    targetRole = 'admin';
+                    await Otp.deleteOne({ email: email.toLowerCase() });
+                }
+
+                // Create new user
+                user = await User.create({
+                    fullName: name,
+                    email: email.toLowerCase(),
+                    profileImage: picture,
+                    googleId,
+                    role: targetRole,
+                    isActive: true,
+                    activityLog: [{ action: 'registered', details: `Account created via Google Sign-In as ${targetRole}` }]
+                });
+            } else {
+                // User exists - just log in
+                // If they explicitly requested Admin role but are currently a student, we don't auto-upgrade them.
+                // If they are already an admin, fine.
+                
+                if (!user.googleId) {
+                    user.googleId = googleId;
+                }
+                
+                if (!user.isActive) {
+                    return res.status(403).json({ success: false, message: 'Your account has been deactivated. Please contact admin.' });
+                }
+                
+                user.activityLog.push({ action: 'login', details: 'Logged in via Google Sign-In' });
+                if (user.activityLog.length > 50) user.activityLog = user.activityLog.slice(-50);
+                await user.save();
+            }
+
+            respondWithToken(res, user);
+        } catch (err) {
+            console.error('[googleLogin] FATAL ERROR:', err);
+            res.status(500).json({ success: false, message: `Google Login failed: ${err.message}` });
+        }
+    }
 };

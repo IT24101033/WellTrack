@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Activity, Lock, Mail, User, Hash, AlertCircle, CheckCircle, Phone, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { register as registerApi, sendAdminPin as sendPinApi } from '../../services/authService';
+import { register as registerApi, sendAdminPin as sendPinApi, googleLogin as googleLoginApi } from '../../services/authService';
+import { GoogleLogin } from '@react-oauth/google';
 
 const inputClass = 'w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition';
 
@@ -19,6 +20,7 @@ export default function Register() {
     
     const [showOtp, setShowOtp] = useState(false);
     const [adminPin, setAdminPin] = useState('');
+    const [googleCredential, setGoogleCredential] = useState(null);
 
     const handleChange = (e) => {
         setError('');
@@ -86,6 +88,60 @@ export default function Register() {
             navigate('/dashboard', { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleSuccess = async (response) => {
+        try {
+            setLoading(true);
+            setError('');
+            
+            if (form.role === 'admin') {
+                if (!form.phoneNumber) {
+                    setError('Phone number is required for Admin registration.');
+                    setLoading(false);
+                    return;
+                }
+                // Save credential and send PIN
+                setGoogleCredential(response.credential);
+                // We need to decode the credential to get the email, or just pass it to a helper.
+                // For simplicity, I'll use a hack: the backend will need the email to send the PIN.
+                // Actually, let's just use the form's email if they filled it, or we'll have to decode the JWT.
+                // Let's decode the JWT to get the email.
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const decoded = JSON.parse(jsonPayload);
+                const googleEmail = decoded.email;
+
+                await sendPinApi({ email: googleEmail, phoneNumber: form.phoneNumber });
+                setShowOtp(true);
+                setLoading(false);
+            } else {
+                const res = await googleLoginApi(response.credential);
+                login(res.data.user, res.data.token);
+                navigate('/dashboard', { replace: true });
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google Sign-In failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyGoogleAdmin = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const res = await googleLoginApi(googleCredential, 'admin', adminPin);
+            login(res.data.user, res.data.token);
+            navigate('/dashboard', { replace: true });
+        } catch (err) {
+            setError(err.response?.data?.message || 'Verification failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -213,6 +269,28 @@ export default function Register() {
                             </button>
                         </form>
 
+                        <div className="mt-6">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-gray-500 font-medium">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center">
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={() => setError('Google Registration failed.')}
+                                    useOneTap
+                                    theme="filled_blue"
+                                    shape="pill"
+                                    width="100%"
+                                />
+                            </div>
+                        </div>
+
                         <p className="text-center text-sm text-gray-500 mt-6">
                             Already have an account?{' '}
                             <Link to="/login" className="text-blue-600 hover:underline font-medium">Sign in</Link>
@@ -240,11 +318,11 @@ export default function Register() {
                         {error && <p className="text-red-500 text-xs mt-2 text-center text-medium">{error}</p>}
 
                         <div className="mt-6 flex gap-3">
-                            <button onClick={() => { setShowOtp(false); setError(''); }} type="button"
+                            <button onClick={() => { setShowOtp(false); setGoogleCredential(null); setError(''); }} type="button"
                                 className="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">
                                 Cancel
                             </button>
-                            <button onClick={handleSubmit} type="button" disabled={loading || adminPin.length < 6}
+                            <button onClick={googleCredential ? handleVerifyGoogleAdmin : handleSubmit} type="button" disabled={loading || adminPin.length < 6}
                                 className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition flex justify-center items-center">
                                 {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Verify'}
                             </button>

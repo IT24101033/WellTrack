@@ -10,6 +10,7 @@ export const register = (data) => api.post('/users/register', data);
 export const sendAdminPin = (data) => api.post('/users/send-pin', data);
 
 export const login = (data) => api.post('/users/login', data);
+export const googleLogin = (credential, role, adminPin) => api.post('/users/google-login', { credential, role, adminPin });
 
 export const forgotPassword = (data) => api.post('/users/forgot-password', data);
 

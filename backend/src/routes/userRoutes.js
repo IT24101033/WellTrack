@@ -25,12 +25,14 @@ const {
     permanentDeleteUser,
     forgotPassword,
     resetPassword,
+    googleLogin,
 } = require('../controllers/userController');
 
 // ── Public Routes ──────────────────────────────────────────────────────────────
 router.post('/register', registerUser);                    // POST   /api/users/register
 router.post('/send-pin', sendAdminPin);                    // POST   /api/users/send-pin
 router.post('/login', loginUser);                          // POST   /api/users/login
+router.post('/google-login', googleLogin);                // POST   /api/users/google-login
 router.post('/forgot-password', forgotPassword);           // POST   /api/users/forgot-password
 router.post('/reset-password/:token', resetPassword);      // POST   /api/users/reset-password/:token
 

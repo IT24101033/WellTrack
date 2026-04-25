@@ -39,9 +39,14 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: [true, 'Password is required.'],
             minlength: [6, 'Password must be at least 6 characters.'],
             select: false, // never returned in queries by default
+        },
+        googleId: {
+            type: String,
+            default: null,
+            unique: true,
+            sparse: true, // Allows null/empty values to exist without violating uniqueness
         },
         username: {
             type: String,
